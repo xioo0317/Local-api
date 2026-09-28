@@ -126,6 +126,12 @@ json list_actions() {
     });
 }
 
+std::string debug_info() {
+    // Debug info: all tools, versions, dry-run output.
+    // Reuses the same payload produced by the "debug" tool.
+    return tool_debug(json::object());
+}
+
 // ===========================================================================
 // Tool: detect — Root detection (KernelSU / APatch / Magisk / SusFS)
 // ===========================================================================
