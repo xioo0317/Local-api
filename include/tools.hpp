@@ -44,4 +44,21 @@ std::string tool_modules(const nlohmann::json& params);
 // Configuration read/write
 std::string tool_config(const nlohmann::json& params);
 
+// --- New feature tools (all require root privileges) ---
+
+// Hide / restore the coverRoot launcher icon (pm disable / pm enable)
+std::string tool_hide_icon(const nlohmann::json& params);
+
+// Configure SusFS hidden paths in one shot
+std::string tool_susfs_setup(const nlohmann::json& params);
+
+// Configure the list of apps from which root / the manager are hidden
+std::string tool_hide_app_list(const nlohmann::json& params);
+
+// Update the coverRoot authentication key
+std::string tool_update_key(const nlohmann::json& params);
+
+// Set the module / file hash used for integrity checks
+std::string tool_set_hash(const nlohmann::json& params);
+
 } // namespace tools
