@@ -12,6 +12,7 @@
 
 #include <string>
 #include <cstdint>
+#include <signal.h>  // siginfo_t
 
 namespace ksu {
 struct get_info_cmd;

@@ -3,9 +3,27 @@ name: Build & Test
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 jobs:
+  build-host:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build (host)
+        run: make
+
+      - name: Smoke test
+        run: |
+          ./build/local_api &
+          SERVER_PID=$!
+          sleep 2
+          ./test_api.sh 127.0.0.1 8080
+          kill $SERVER_PID
+
   build-android:
     runs-on: ubuntu-latest
     steps:
@@ -16,7 +34,6 @@ jobs:
         with:
           ndk-version: r25b
           add-to-path: false
-
 
       - name: Build with ndk-build (arm64-v8a)
         run: |

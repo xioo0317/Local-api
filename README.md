@@ -1,18 +1,21 @@
 # Local API
 
-C++17 本地 HTTP 服务，基于请求体 action 字段分发工具调用，集成 Root 检测（KernelSU / APatch / Magisk / SusFS）。
+C++17 本地 HTTP 服务。仅开放一个接口 `POST /`，通过请求体 `action` 字段分发工具调用。
+
+> ⚠️ **当前状态：全部工具均为占位（placeholder）**。工具不接收任何参数，服务只做分发，不执行任何功能；Root 检测库已编译但暂不调用。功能实现待后续开发。
 
 ## 架构
 
 ```
-main.cpp      → HTTP 网卡（只启动服务、绑定路由）
-router.cpp    → 请求分发（解析 action，路由到对应工具函数）
-tools.cpp     → 工具函数集合（detect / version / debug / 图标与隐藏配置 / 占位工具）
-detector.cpp  → 纯检测库（KSU / APatch / Magisk / SusFS 握手）
-version.hpp   → 版本号 + 配置常量
+main.cpp      → 引用启动（只 include version.hpp / router.hpp，调 router::run()）
+router.cpp    → 请求分发（网卡绑定、解析 action、分发对应工具函数）
+tools.cpp     → 工具函数集合（detect / version / debug，全部占位、不传参）
+detector.cpp  → 纯检测库工具，暂不调用（KSU / APatch / Magisk / SusFS 握手）
+version.hpp   → 版本号 + 配置常量（整合到 main 引用）
 ```
 
-客户端只需 `POST /`，请求体 `{"action": "..."}` 决定调用哪个工具。
+- 前端 UI 无需 root 即可调用本服务
+- 后端功能实现（需要 root 权限）待后续接入
 
 ## 项目结构
 
@@ -43,166 +46,26 @@ version.hpp   → 版本号 + 配置常量
 
 ## API
 
-### POST / — 所有请求入口
-
-请求体 JSON，`action` 字段决定调用哪个工具。
-
-> ⚠️ **权限说明**：`hide_icon`、`susfs_setup`、`hide_app_list`、`update_key`、`set_hash` 五个工具需要以 **root 权限**运行服务，否则返回 `{"status":"error","message":"root privileges required"}`。
-
-#### action: detect — Root 检测
+### POST / — 唯一入口
 
 ```bash
-curl -X POST http://localhost:8080/ -H "Content-Type: application/json" -d '{"action":"detect"}'
+curl -X POST http://127.0.0.1:8080/ -H "Content-Type: application/json" -d '{"action":"功能名"}'
 ```
-
-```json
-{
-  "status": "ok",
-  "result_file": "/data/local/tmp/coverRoot/root_detect.json",
-  "result": {
-    "detected": "kernelsu",
-    "kernelsu": {"present": true, "mode": "lkm-bundled"},
-    "apatch": {"present": false},
-    "magisk": {"present": false},
-    "susfs": {"present": true}
-  }
-}
-```
-
-#### action: version — 版本信息
-
-```bash
-curl -X POST http://localhost:8080/ -d '{"action":"version"}'
-```
-
-```json
-{"status":"ok","server_version":"1.1.0","api_version":"2.0","app_name":"Local-api"}
-```
-
-#### action: debug — 调试信息 + 工具试运行
-
-```bash
-curl -X POST http://localhost:8080/ -d '{"action":"debug"}'
-```
-
-返回所有工具列表、版本、状态、是否 root、以及检测试运行结果。
-
-#### action: hide_icon — 隐藏 / 恢复应用图标（需要 root）
-
-```bash
-# 隐藏图标
-curl -X POST http://localhost:8080/ -d '{"action":"hide_icon","enabled":true}'
-# 恢复图标
-curl -X POST http://localhost:8080/ -d '{"action":"hide_icon","enabled":false}'
-```
-
-底层执行 `pm disable` / `pm enable com.coverRoot/.LauncherAlias`。
-
-```json
-{"status":"ok","message":"icon hidden","enabled":true}
-```
-
-#### action: susfs_setup — 一键配置 SusFS 隐藏路径（需要 root）
-
-```bash
-curl -X POST http://localhost:8080/ -d '{
-  "action":"susfs_setup",
-  "paths":["/data/adb/ksu","/system/xbin/su"]
-}'
-```
-
-路径必须为绝对路径，且不能包含 `..` 或 shell 特殊字符。配置持久化到 `/data/local/tmp/coverRoot/susfs_paths.json`。
-
-```json
-{
-  "status":"ok",
-  "message":"SusFS paths configured",
-  "configured_paths":["/data/adb/ksu","/system/xbin/su"]
-}
-```
-
-#### action: hide_app_list — 一键配置隐藏应用列表（需要 root）
-
-```bash
-curl -X POST http://localhost:8080/ -d '{
-  "action":"hide_app_list",
-  "packages":["com.example.app1","com.example.app2"]
-}'
-```
-
-包名仅允许字母、数字、`.`、`_`，配置持久化到 `/data/local/tmp/coverRoot/hidden_apps.json`。
-
-```json
-{
-  "status":"ok",
-  "message":"hidden app list configured",
-  "hidden_packages":["com.example.app1","com.example.app2"]
-}
-```
-
-#### action: update_key — 更新认证密钥（需要 root）
-
-```bash
-curl -X POST http://localhost:8080/ -d '{
-  "action":"update_key",
-  "key":"new_secret_key_value"
-}'
-```
-
-密钥长度 1–256，不允许 shell 特殊字符；持久化到 `/data/local/tmp/coverRoot/auth_key`。
-
-```json
-{"status":"ok","message":"Key updated"}
-```
-
-#### action: set_hash — 设置模块 / 文件哈希（需要 root）
-
-```bash
-curl -X POST http://localhost:8080/ -d '{
-  "action":"set_hash",
-  "hash":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-}'
-```
-
-哈希为 32–128 位十六进制字符（如 sha256），持久化到 `/data/local/tmp/coverRoot/module.sha256`。
-
-```json
-{
-  "status":"ok",
-  "message":"hash updated",
-  "hash":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-}
-```
-
-### GET /debug — 调试端点
-
-等同 `action: debug`，方便浏览器直接访问：
-
-```bash
-curl http://localhost:8080/debug
-```
-
-### 已注册工具
 
 | action | 状态 | 说明 |
-|--------|------|------|
-| `detect` | ✅ 已实现 | Root 检测（KSU/APatch/Magisk/SusFS 握手） |
-| `version` | ✅ 已实现 | 服务器版本 + API 版本 |
-| `debug` | ✅ 已实现 | 工具信息 + 检测试运行 + 环境信息 |
-| `sysinfo` | 🔲 占位 | 系统信息（设备型号、Android 版本、内核等） |
-| `modules` | 🔲 占位 | 模块管理（列表、启用/禁用） |
-| `config` | 🔲 占位 | 配置读写 |
-| `hide_icon` | ✅ 已实现 | 隐藏 / 恢复应用图标（需要 root） |
-| `susfs_setup` | ✅ 已实现 | 一键配置 SusFS 隐藏路径（需要 root） |
-| `hide_app_list` | ✅ 已实现 | 一键配置隐藏应用列表（需要 root） |
-| `update_key` | ✅ 已实现 | 更新认证密钥（需要 root） |
-| `set_hash` | ✅ 已实现 | 设置模块 / 文件哈希（需要 root） |
+|---|---|---|
+| `detect` | placeholder | Root 检测（KSU / APatch / Magisk / SusFS 握手），未接线 |
+| `version` | ok | 服务版本 + API 版本 |
+| `debug` | ok | 版本、已注册工具、root 状态 |
 
-### 未知 action
+- 占位工具统一返回：`{"status":"placeholder","action":"...","message":"not implemented — placeholder only"}`
+- 未知 action：`{"status":"error","error":"unknown action: ...","available_actions":[...]}`（HTTP 200）
+- 非法/缺失 JSON：HTTP 400
 
-```json
-{"status":"error","error":"unknown action: xxx","available_actions":["detect","version","debug","sysinfo","modules","config","hide_icon","susfs_setup","hide_app_list","update_key","set_hash"]}
-```
+### GET /debug — 服务自省
+
+返回版本信息、已注册工具列表、当前进程是否 root（`is_root`）。
+
 
 ## 构建
 

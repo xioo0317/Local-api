@@ -7,7 +7,6 @@
 
 #pragma once
 
-#include <nlohmann/json.hpp>
 #include <string>
 
 namespace local_api {
@@ -30,14 +29,5 @@ inline constexpr int SERVER_PORT = LOCAL_API_PORT;
 // Output paths for root detection result
 inline constexpr const char* OUTPUT_DIR  = "/data/local/tmp/coverRoot";
 inline constexpr const char* OUTPUT_FILE = "/data/local/tmp/coverRoot/root_detect.json";
-
-// Returns JSON string with version info for frontend update checking.
-inline std::string get_version_info() {
-    nlohmann::json j;
-    j["server_version"] = SERVER_VERSION;
-    j["api_version"]    = API_VERSION;
-    j["app_name"]       = APP_NAME;
-    return j.dump();
-}
 
 } // namespace local_api
