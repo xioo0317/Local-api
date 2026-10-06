@@ -21,7 +21,7 @@ jobs:
           ./build/local_api &
           SERVER_PID=$!
           sleep 2
-          ./test_api.sh 127.0.0.1 8080
+          bash test_api.sh 127.0.0.1 8080
           kill $SERVER_PID
 
   build-android:
