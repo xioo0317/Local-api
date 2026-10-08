@@ -6,15 +6,17 @@ include $(CLEAR_VARS)
 LOCAL_MODULE := local_api
 
 # Source files:
-#   main.cpp     — HTTP network card (server bind only)
-#   router.cpp   — request dispatch by action field
+#   main.cpp     — entry point, argv dispatch (install / else -> router)
+#   router.cpp   — HTTP service (long-running) + request dispatch by action
 #   tools.cpp    — tool functions (detect, version, debug, etc.)
 #   detector.cpp — KernelSU / APatch / Magisk / SusFS handshake detection
+#   install.cpp  — one-shot initialization (run once)
 LOCAL_SRC_FILES := \
     ../src/main.cpp \
     ../src/router.cpp \
     ../src/tools.cpp \
-    ../src/detector.cpp
+    ../src/detector.cpp \
+    ../src/install.cpp
 
 LOCAL_C_INCLUDES := \
     $(LOCAL_PATH)/../include \

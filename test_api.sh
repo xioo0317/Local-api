@@ -34,7 +34,7 @@ echo "==================================================="
 echo ""
 
 # ── 1. POST / action=detect ──────────────────────────────
-echo "[1/7] POST / action=detect"
+echo "[1/8] POST / action=detect"
 HTTP_CODE=$(curl -s -o /tmp/api_body -w "%{http_code}" -X POST -H "Content-Type: application/json" -d '{"action":"detect"}' "$BASE_URL/")
 BODY=$(cat /tmp/api_body)
 check "HTTP 200" "$([ "${HTTP_CODE}" = "200" ] && echo 1 || echo 0)" "got ${HTTP_CODE}"
@@ -42,7 +42,7 @@ check "status placeholder" "$(echo "$BODY" | grep -q '"status":"placeholder"' &&
 check "echoes action" "$(echo "$BODY" | grep -q '"action":"detect"' && echo 1 || echo 0)"
 
 # ── 2. POST / action=version ──────────────────────────────
-echo "[2/7] POST / action=version"
+echo "[2/8] POST / action=version"
 HTTP_CODE=$(curl -s -o /tmp/api_body -w "%{http_code}" -X POST -H "Content-Type: application/json" -d '{"action":"version"}' "$BASE_URL/")
 BODY=$(cat /tmp/api_body)
 check "HTTP 200" "$([ "${HTTP_CODE}" = "200" ] && echo 1 || echo 0)" "got ${HTTP_CODE}"
@@ -50,7 +50,7 @@ check "status ok" "$(echo "$BODY" | grep -q '"status":"ok"' && echo 1 || echo 0)
 check "has server_version" "$(echo "$BODY" | grep -q '"server_version"' && echo 1 || echo 0)"
 
 # ── 3. POST / action=debug ──────────────────────────────
-echo "[3/7] POST / action=debug"
+echo "[3/8] POST / action=debug"
 HTTP_CODE=$(curl -s -o /tmp/api_body -w "%{http_code}" -X POST -H "Content-Type: application/json" -d '{"action":"debug"}' "$BASE_URL/")
 BODY=$(cat /tmp/api_body)
 check "HTTP 200" "$([ "${HTTP_CODE}" = "200" ] && echo 1 || echo 0)" "got ${HTTP_CODE}"
@@ -58,14 +58,14 @@ check "has tools" "$(echo "$BODY" | grep -q '"tools"' && echo 1 || echo 0)"
 check "reports is_root" "$(echo "$BODY" | grep -q '"is_root"' && echo 1 || echo 0)"
 
 # ── 4. GET /debug ────────────────────────────────────────
-echo "[4/7] GET /debug"
+echo "[4/8] GET /debug"
 HTTP_CODE=$(curl -s -o /tmp/api_body -w "%{http_code}" "$BASE_URL/debug")
 BODY=$(cat /tmp/api_body)
 check "HTTP 200" "$([ "${HTTP_CODE}" = "200" ] && echo 1 || echo 0)" "got ${HTTP_CODE}"
 check "has tools" "$(echo "$BODY" | grep -q '"tools"' && echo 1 || echo 0)"
 
 # ── 5. Unknown action ───────────────────────────────────
-echo "[5/7] POST / unknown action"
+echo "[5/8] POST / unknown action"
 HTTP_CODE=$(curl -s -o /tmp/api_body -w "%{http_code}" -X POST -H "Content-Type: application/json" -d '{"action":"nope"}' "$BASE_URL/")
 BODY=$(cat /tmp/api_body)
 check "HTTP 200" "$([ "${HTTP_CODE}" = "200" ] && echo 1 || echo 0)" "got ${HTTP_CODE}"
@@ -73,16 +73,29 @@ check "error response" "$(echo "$BODY" | grep -q '"error"' && echo 1 || echo 0)"
 check "lists available_actions" "$(echo "$BODY" | grep -q '"available_actions"' && echo 1 || echo 0)"
 
 # ── 6. Invalid JSON body ─────────────────────────────────
-echo "[6/7] POST / invalid JSON"
+echo "[6/8] POST / invalid JSON"
 HTTP_CODE=$(curl -s -o /tmp/api_body -w "%{http_code}" -X POST -H "Content-Type: application/json" -d 'not-json' "$BASE_URL/")
 check "HTTP 400" "$([ "${HTTP_CODE}" = "400" ] && echo 1 || echo 0)" "got ${HTTP_CODE}"
 check "error response" "$(cat /tmp/api_body | grep -q '"error"' && echo 1 || echo 0)"
 
 # ── 7. Missing action field ──────────────────────────────
-echo "[7/7] POST / missing action"
+echo "[7/8] POST / missing action"
 HTTP_CODE=$(curl -s -o /tmp/api_body -w "%{http_code}" -X POST -H "Content-Type: application/json" -d '{}' "$BASE_URL/")
 check "HTTP 400" "$([ "${HTTP_CODE}" = "400" ] && echo 1 || echo 0)" "got ${HTTP_CODE}"
 check "lists available_actions" "$(cat /tmp/api_body | grep -q '"available_actions"' && echo 1 || echo 0)"
+
+# ── 8. CLI dispatch: install (no server needed) ──────────
+echo "[8/8] CLI dispatch: install"
+BIN="./build/local_api"
+if [ ! -x "$BIN" ]; then BIN="./local_api"; fi
+rc=0
+out=$("$BIN" install 2>&1) || rc=$?
+check "install banner" "$(echo "$out" | grep -q "install" && echo 1 || echo 0)"
+if [ "$rc" -eq 0 ]; then
+    check "install ok (complete or already-initialized)" "$(echo "$out" | grep -qE "complete|nothing to do" && echo 1 || echo 0)"
+else
+    check "install fails cleanly on non-root host (rc=${rc})" "$(echo "$out" | grep -q "error: failed to create" && echo 1 || echo 0)"
+fi
 
 echo ""
 echo "==================================================="

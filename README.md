@@ -7,7 +7,9 @@ C++17 本地 HTTP 服务。仅开放一个接口 `POST /`，通过请求体 `act
 ## 架构
 
 ```
-main.cpp      → 引用启动（只 include version.hpp / router.hpp，调 router::run()）
+main.cpp      → 引用启动 + 参数分发
+                  install → install::run()（一次性初始化，基本只执行一次）
+                  router / 无参数 / 其他 → router::run()（常驻网页服务）
 router.cpp    → 请求分发（网卡绑定、解析 action、分发对应工具函数）
 tools.cpp     → 工具函数集合（detect / version / debug，全部占位、不传参）
 detector.cpp  → 纯检测库工具，暂不调用（KSU / APatch / Magisk / SusFS 握手）
@@ -83,9 +85,14 @@ make clean
 ## 运行
 
 ```bash
-adb push build/local_api_arm64-v8a /data/local/tmp/local_api
-adb shell chmod +x /data/local/tmp/local_api
-adb shell /data/local/tmp/local_api
+adb push build/local_api_arm64-v8a /data/Local-api
+adb shell chmod +x /data/Local-api
+
+# 初始化安装（基本只执行一次；幂等，重复执行自动跳过）
+adb shell /data/Local-api install
+
+# 启动常驻网页服务（router / 无参数 / 其他输入均走此分支）
+adb shell /data/Local-api router
 ```
 
 > 图标隐藏、SusFS / 应用隐藏配置等功能需要以 root 身份启动本服务（例如在已获取 root 的 shell 中运行）。

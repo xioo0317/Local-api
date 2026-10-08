@@ -44,7 +44,8 @@ TARGET_NAME := local_api
 SRCS     := $(SRC_DIR)/main.cpp \
             $(SRC_DIR)/router.cpp \
             $(SRC_DIR)/tools.cpp \
-            $(SRC_DIR)/detector.cpp
+            $(SRC_DIR)/detector.cpp \
+            $(SRC_DIR)/install.cpp
 
 ABIS     := arm64-v8a armeabi-v7a x86_64
 
