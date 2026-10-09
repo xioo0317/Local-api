@@ -11,12 +11,14 @@ LOCAL_MODULE := local_api
 #   tools.cpp    — tool functions (detect, version, debug, etc.)
 #   detector.cpp — KernelSU / APatch / Magisk / SusFS handshake detection
 #   install.cpp  — one-shot initialization (run once)
+#   debug.cpp    — CLI debug entry (master-switch gated), standalone diagnostics
 LOCAL_SRC_FILES := \
     ../src/main.cpp \
     ../src/router.cpp \
     ../src/tools.cpp \
     ../src/detector.cpp \
-    ../src/install.cpp
+    ../src/install.cpp \
+    ../src/debug.cpp
 
 LOCAL_C_INCLUDES := \
     $(LOCAL_PATH)/../include \

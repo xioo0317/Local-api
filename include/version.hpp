@@ -12,7 +12,12 @@
 namespace local_api {
 
 // Bump on each release
-inline constexpr const char* SERVER_VERSION = "1.1.0";
+inline constexpr const char* SERVER_VERSION = "1.2.0";
+
+// Debug master switch (hardcoded). CLI debug entry (`local_api debug ...`)
+// is alive only while this is true. Flip to false before a release build
+// to shut the debug entry off everywhere — no other change needed.
+inline constexpr bool kDebugEnabled = true;
 
 // API protocol version (bump when request/response format changes)
 inline constexpr const char* API_VERSION    = "2.0";
