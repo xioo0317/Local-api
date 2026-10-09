@@ -20,6 +20,7 @@
 #include <dirent.h>
 #include <fcntl.h>
 #include <poll.h>
+#include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -67,8 +68,29 @@ bool file_exists(const std::string& path) {
     return stat(path.c_str(), &st) == 0;
 }
 
-// Open every /dev/input/eventN so key presses can be watched.
-std::vector<int> open_input_devices() {
+// True when the device actually carries one of the keys the menu
+// consumes (power / volume up / volume down). Devices without them —
+// touchscreens, sensors — are left completely untouched, so touch
+// input keeps working while the menu is up.
+bool device_has_watched_keys(const int fd) {
+    unsigned char key_bits[KEY_MAX / 8 + 1] = {};
+    if (::ioctl(fd, EVIOCGBIT(EV_KEY, sizeof(key_bits)), key_bits) < 0) return false;
+    const auto has = [&key_bits](const int code) {
+        return (key_bits[code / 8] & (1u << (code % 8))) != 0;
+    };
+    return has(kKeyVolumeUp) || has(kKeyVolumeDown) || has(kKeyPower);
+}
+
+// Open every /dev/input/eventN that carries the watched keys and, when
+// `grab` is set, take it exclusively via EVIOCGRAB: the kernel stops
+// delivering those events to the system, so KEY_POWER no longer reaches
+// the power manager and the screen stays on during the menu.
+//
+// The grab lives on the fd: volume_select releases it explicitly when
+// done, and any exit path — normal return, signal or crash — closes the
+// fds and the kernel drops the grab by itself, instantly restoring the
+// power key.
+std::vector<int> open_input_devices(const bool grab) {
     std::vector<int> fds;
     DIR* dir = ::opendir("/dev/input");
     if (dir == nullptr) return fds;
@@ -76,14 +98,28 @@ std::vector<int> open_input_devices() {
         const std::string name = ent->d_name;
         if (name.rfind("event", 0) != 0) continue;
         const int fd = ::open(("/dev/input/" + name).c_str(), O_RDONLY | O_NONBLOCK);
-        if (fd >= 0) fds.push_back(fd);
+        if (fd < 0) continue;
+        if (!device_has_watched_keys(fd)) {
+            ::close(fd);
+            continue;
+        }
+        if (grab && ::ioctl(fd, EVIOCGRAB, reinterpret_cast<void*>(1)) != 0) {
+            // Device busy (already grabbed elsewhere): keep listening,
+            // but the system will also see the keys.
+            std::cout << "[menu] note: could not grab " << name
+                      << ", system may still react to its keys\n";
+        }
+        fds.push_back(fd);
     }
     ::closedir(dir);
     return fds;
 }
 
 void close_input_devices(std::vector<int>& fds) {
-    for (const int fd : fds) ::close(fd);
+    for (const int fd : fds) {
+        ::ioctl(fd, EVIOCGRAB, reinterpret_cast<void*>(0)); // explicit release
+        ::close(fd);                                        // kernel drops grab anyway
+    }
     fds.clear();
 }
 
@@ -138,11 +174,12 @@ int volume_select(const std::vector<std::string>& options,
         return sel;
     }
 
-    std::vector<int> fds = open_input_devices();
+    std::vector<int> fds = open_input_devices(/*grab=*/true);
     if (fds.empty()) {
         std::cout << "\n[menu] no input device found, keeping default\n";
         return sel;
     }
+    std::cout << "[menu] power key captured: screen-off suppressed until the menu closes\n";
 
     const auto deadline = std::chrono::steady_clock::now() +
                           std::chrono::seconds(timeout_sec);
