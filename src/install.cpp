@@ -15,6 +15,7 @@
 // Self-contained: does NOT reuse anything from tools.cpp / router.cpp.
 
 #include "install.hpp"
+#include "detector.hpp" // automatic root environment detection
 #include "version.hpp" // APP_NAME / SERVER_VERSION / OUTPUT_DIR
 
 #include <dirent.h>
@@ -213,6 +214,59 @@ int volume_select(const std::vector<std::string>& options,
     return sel;
 }
 
+bool volume_choice_binary(const std::string& up_label,
+                          const std::string& down_label,
+                          const int timeout_sec) {
+    // "自动检测 (推荐)" -> "自动检测" for the default/timeout/picked lines.
+    std::string up_plain = up_label;
+    const std::string suffix = " (推荐)";
+    if (up_plain.size() > suffix.size() &&
+        up_plain.compare(up_plain.size() - suffix.size(), suffix.size(), suffix) == 0) {
+        up_plain.erase(up_plain.size() - suffix.size());
+    }
+    std::cout << "[menu] 请选择 Root 环境检测方式：\n"
+              << "[menu] 请使用音量键选择：\n"
+              << "[menu]   音量上键：" << up_label << "\n"
+              << "[menu]   音量下键：" << down_label << "\n"
+              << "[menu]   " << timeout_sec << "秒无操作：默认" << up_plain << "\n";
+
+    // Non-interactive stdout (pipes, CI): never wait on keys.
+    if (::isatty(STDOUT_FILENO) == 0) {
+        std::cout << "[menu] 非交互环境，默认：" << up_plain << "\n";
+        return true;
+    }
+
+    // Grab devices while waiting: the power key is swallowed, so the
+    // screen stays on during the choice; released on the way out and
+    // automatically by the kernel on exit / crash.
+    std::vector<int> fds = open_input_devices(/*grab=*/true);
+    if (fds.empty()) {
+        std::cout << "[menu] 无输入设备，默认：" << up_plain << "\n";
+        return true;
+    }
+
+    bool picked_up = true;
+    bool timed_out = false;
+    const auto deadline = std::chrono::steady_clock::now() +
+                          std::chrono::seconds(timeout_sec);
+    while (true) {
+        const auto left_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                                 deadline - std::chrono::steady_clock::now()).count();
+        if (left_ms <= 0) { timed_out = true; break; }
+        const int key = wait_for_watched_key(fds, static_cast<int>(left_ms));
+        if (key == -2) continue; // unrelated input event, poll again
+        if (key < 0) { timed_out = true; break; }
+        if (key == static_cast<int>(kKeyVolumeUp)) { picked_up = true; break; }
+        if (key == static_cast<int>(kKeyVolumeDown)) { picked_up = false; break; }
+        // power key: swallowed by the grab on purpose, keep waiting
+    }
+    close_input_devices(fds);
+
+    if (timed_out) std::cout << "[menu] 超时，默认：" << up_plain << "\n";
+    else std::cout << "[menu] 已选择：" << (picked_up ? up_plain : down_label) << "\n";
+    return picked_up;
+}
+
 int run() {
     std::cout << local_api::APP_NAME << " install v" << local_api::SERVER_VERSION << "\n"
               << "one-time initialization\n";
@@ -240,6 +294,24 @@ int run() {
         return 0;
     }
 
+    // Root environment detection mode: volume up = auto detect (default,
+    // recommended), volume down = manual selection; 10s idle -> auto.
+    std::string root_mode;
+    if (volume_choice_binary("自动检测 (推荐)", "手动选择", /*timeout_sec=*/10)) {
+        std::cout << "[install] 自动检测 Root 环境...\n";
+        ksu_detector::Detector detector;
+        const ksu_detector::DetectResult result = detector.run_all();
+        ksu_detector::print_detector_result(result);
+        root_mode = result.mode;
+    } else {
+        const std::vector<std::string> root_types = {"KernelSU", "Apatch", "Magisk", "no root"};
+        const int pick = volume_select(root_types, /*default_index=*/0, /*timeout_sec=*/30);
+        root_mode = (pick >= 0 && pick < static_cast<int>(root_types.size()) && pick != 3)
+                        ? root_types[pick]
+                        : "none";
+        std::cout << "[install] 手动指定 Root 环境: " << root_mode << "\n";
+    }
+
     std::cout << "[install] creating output directory: " << local_api::OUTPUT_DIR << "\n";
     if (!mkdirs(local_api::OUTPUT_DIR)) {
         std::cout << "[install] error: failed to create " << local_api::OUTPUT_DIR
@@ -252,7 +324,8 @@ int run() {
         const std::time_t now = std::time(nullptr);
         out << "installed_by=" << local_api::APP_NAME << "\n"
             << "version=" << local_api::SERVER_VERSION << "\n"
-            << "timestamp=" << now << "\n";
+            << "timestamp=" << now << "\n"
+            << "root_mode=" << root_mode << "\n";
     }
     out.close();
     if (!file_exists(marker)) {

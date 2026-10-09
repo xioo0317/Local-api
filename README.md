@@ -96,6 +96,9 @@ adb shell /data/Local-api install
 #   不触发系统息屏（触摸屏等无关设备不受影响）；菜单结束主动释放 grab，
 #   进程退出或崩溃时内核随 fd 关闭自动解除，电源键立刻恢复息屏功能；
 #   非交互环境（CI / 管道输出）或无输入设备时自动选默认项（install now），30 秒超时同样取默认
+#   安装确认后弹出 Root 环境检测方式菜单（音量上键=自动检测(推荐)，音量下键=手动选择，
+#   10 秒无操作默认自动检测）：自动检测跑真实 detector 并输出结果；手动选择从
+#   KernelSU / Apatch / Magisk / no root 中指定；结果 root_mode 记入 .installed 标志文件
 
 # 启动常驻网页服务（router / 无参数 / 其他输入均走此分支）
 adb shell /data/Local-api router

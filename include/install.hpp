@@ -21,6 +21,14 @@ int volume_select(const std::vector<std::string>& options,
                   int default_index = 0,
                   int timeout_sec = 30);
 
+// Two-way volume choice: volume up / volume down map directly to the
+// two options (no move+confirm round trip). Falls back to the default
+// (volume up) on non-interactive sessions, missing input devices, or
+// timeout. Returns true when volume up was picked.
+bool volume_choice_binary(const std::string& up_label,
+                          const std::string& down_label,
+                          int timeout_sec = 10);
+
 // One-time initialization (idempotent). Returns 0 on success.
 int run();
 
