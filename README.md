@@ -9,7 +9,7 @@ C++17 本地 HTTP 服务。仅开放一个接口 `POST /`，通过请求体 `act
 ```
 main.cpp      → 引用启动 + 参数分发
                   install → install::run()（一次性初始化，基本只执行一次）
-                  debug <子命令> → debug::run()（调试入口，总开关 kDebugEnabled 控制）
+                  debug <子命令> → debug::run()（调试入口，总开关 kDebugEnabled 控制，输出纯文本）
                   router / 无参数 / 其他 → router::run()（常驻网页服务）
 router.cpp    → 请求分发（网卡绑定、解析 action、分发对应工具函数）
 tools.cpp     → 工具函数集合（detect / version / debug，全部占位、不传参）
@@ -96,7 +96,7 @@ adb shell /data/Local-api install
 adb shell /data/Local-api router
 
 # 调试入口（发行版将 version.hpp 中 kDebugEnabled 改为 false 即整体关闭）
-adb shell /data/Local-api debug detector   # 单独跑 detector.cpp，输出检测 JSON
+adb shell /data/Local-api debug detector   # 单独跑 detector.cpp，输出纯文本检测结果
 ```
 
 > 图标隐藏、SusFS / 应用隐藏配置等功能需要以 root 身份启动本服务（例如在已获取 root 的 shell 中运行）。

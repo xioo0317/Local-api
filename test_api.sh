@@ -102,7 +102,7 @@ echo "[9/9] CLI dispatch: debug"
 rc=0
 out=$("$BIN" debug detector 2>&1) || rc=$?
 check "debug banner" "$(echo "$out" | grep -q "debug" && echo 1 || echo 0)"
-check "debug detector JSON or disabled" "$(echo "$out" | grep -qE '"kernelsu"|"detected"|disabled' && echo 1 || echo 0)"
+check "debug detector text or disabled" "$(echo "$out" | grep -qE "detected|kernelsu|disabled" && echo 1 || echo 0)"
 
 echo ""
 echo "==================================================="
