@@ -59,6 +59,16 @@ struct DetectResult {
     ApResult  ap;
     MagiskResult magisk;
     SusfsResult susfs;
+
+    // Final root mode, resolved by run_all() after all probes:
+    //   KernelSU_LKM   — KernelSU running in LKM mode
+    //   KernelSU_SUSFS — KernelSU with SusFS present
+    //   KernelSU_PE    — KernelSU with SELinux Permissive
+    //   Apatch         — APatch detected
+    //   Magisk         — Magisk detected
+    //   KernelSU       — KernelSU without any of the above
+    //   none           — nothing detected
+    std::string mode = "none";
 };
 
 // Print a DetectResult as plain text ("key : value" per line) to stdout.

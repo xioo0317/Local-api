@@ -322,6 +322,26 @@ SusfsResult Detector::probe_susfs() {
 // run_all
 // ===========================================================================
 
+// Final root-mode resolution (priority order, checked top-down):
+//   1. KernelSU in LKM mode            -> KernelSU_LKM
+//   2. KernelSU with SusFS present     -> KernelSU_SUSFS
+//   3. KernelSU with SELinux Permissive-> KernelSU_PE
+//   4. APatch detected                 -> Apatch
+//   5. Magisk detected                 -> Magisk
+//   KernelSU without any of the above  -> KernelSU (fallback)
+//   nothing detected                   -> none
+std::string resolve_root_mode(const DetectResult& r) {
+    if (r.ksu.present) {
+        if (r.ksu.mode_str.find("lkm") != std::string::npos) return "KernelSU_LKM";
+        if (r.susfs.detected) return "KernelSU_SUSFS";
+        if (r.selinux.state == "Permissive") return "KernelSU_PE";
+        return "KernelSU";
+    }
+    if (r.ap.present) return "Apatch";
+    if (r.magisk.present) return "Magisk";
+    return "none";
+}
+
 DetectResult Detector::run_all() {
     DetectResult result;
     result.ksu = probe_ksu();
@@ -339,6 +359,8 @@ DetectResult Detector::run_all() {
     else if (result.ap.present) result.type = KernelType::KernelPatch;
     else if (result.magisk.present) result.type = KernelType::Magisk;
     else result.type = KernelType::None;
+
+    result.mode = resolve_root_mode(result);
     return result;
 }
 
@@ -386,17 +408,17 @@ const char* present(bool v) { return v ? "present" : "not present"; }
 } // anonymous namespace
 
 void print_detector_result(const DetectResult& r) {
-    std::cout << "detector:\n"
-              << "  detected : " << kernel_type_name(r.type) << "\n"
-              << "  SELinux  : " << r.selinux.state << "\n"
-              << "  kernelsu : " << present(r.ksu.present);
+    std::cout << "detected : " << kernel_type_name(r.type) << "\n"
+              << "SELinux  : " << r.selinux.state << "\n"
+              << "kernelsu : " << present(r.ksu.present);
     if (r.ksu.present) {
         std::cout << " (mode: " << r.ksu.mode_str << ")";
     }
     std::cout << "\n"
-              << "  apatch   : " << present(r.ap.present) << "\n"
-              << "  magisk   : " << present(r.magisk.present) << "\n"
-              << "  susfs    : " << present(r.susfs.detected) << "\n";
+              << "Apatch   : " << present(r.ap.present) << "\n"
+              << "Magisk   : " << present(r.magisk.present) << "\n"
+              << "susfs    : " << present(r.susfs.detected) << "\n"
+              << "mode     : " << r.mode << "\n";
 }
 
 } // namespace ksu_detector
