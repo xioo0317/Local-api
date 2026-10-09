@@ -12,7 +12,7 @@
 namespace local_api {
 
 // Bump on each release
-inline constexpr const char* SERVER_VERSION = "1.3.0";
+inline constexpr const char* SERVER_VERSION = "1.4.0";
 
 // Debug master switch (hardcoded). CLI debug entry (`local_api debug ...`)
 // is alive only while this is true. Flip to false before a release build

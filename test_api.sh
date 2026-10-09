@@ -91,6 +91,7 @@ if [ ! -x "$BIN" ]; then BIN="./local_api"; fi
 rc=0
 out=$("$BIN" install 2>&1) || rc=$?
 check "install banner" "$(echo "$out" | grep -q "install" && echo 1 || echo 0)"
+check "volume-key menu shown (auto-default on non-tty)" "$(echo "$out" | grep -q '\[menu\]' && echo 1 || echo 0)"
 if [ "$rc" -eq 0 ]; then
     check "install ok (complete or already-initialized)" "$(echo "$out" | grep -qE "complete|nothing to do" && echo 1 || echo 0)"
 else

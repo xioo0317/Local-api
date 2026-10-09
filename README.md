@@ -8,7 +8,7 @@ C++17 本地 HTTP 服务。仅开放一个接口 `POST /`，通过请求体 `act
 
 ```
 main.cpp      → 引用启动 + 参数分发
-                  install → install::run()（一次性初始化，基本只执行一次）
+                  install → install::run()（一次性初始化，含音量键确认菜单，基本只执行一次）
                   debug <子命令> → debug::run()（调试入口，总开关 kDebugEnabled 控制，输出纯文本）
                   router / 无参数 / 其他 → router::run()（常驻网页服务）
 router.cpp    → 请求分发（网卡绑定、解析 action、分发对应工具函数）
@@ -91,6 +91,8 @@ adb shell chmod +x /data/Local-api
 
 # 初始化安装（基本只执行一次；幂等，重复执行自动跳过）
 adb shell /data/Local-api install
+#   安装前显示音量键确认菜单：音量上/下移动选项、电源键确认；
+#   非交互环境（CI / 管道输出）或无输入设备时自动选默认项（install now），30 秒超时同样取默认
 
 # 启动常驻网页服务（router / 无参数 / 其他输入均走此分支）
 adb shell /data/Local-api router
