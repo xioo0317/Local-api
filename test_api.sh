@@ -103,6 +103,7 @@ rc=0
 out=$("$BIN" debug detector 2>&1) || rc=$?
 check "debug banner" "$(echo "$out" | grep -q "debug" && echo 1 || echo 0)"
 check "debug detector text or disabled" "$(echo "$out" | grep -qE "detected|kernelsu|disabled" && echo 1 || echo 0)"
+check "SELinux line in detector output" "$(echo "$out" | grep -qE "SELinux|disabled" && echo 1 || echo 0)"
 
 echo ""
 echo "==================================================="

@@ -11,9 +11,8 @@
 #include "magisk_uapi.hpp"
 #include "susfs_uapi.hpp"
 
-#include <nlohmann/json.hpp>
-
 #include <cstdio>
+#include <iostream>
 #include <cstdlib>
 #include <cstring>
 #include <cerrno>
@@ -33,8 +32,6 @@
 #include <sys/socket.h>
 
 namespace ksu_detector {
-
-using json = nlohmann::json;
 
 // ===========================================================================
 // SIGSYS handler
@@ -331,6 +328,7 @@ DetectResult Detector::run_all() {
     result.ap = probe_apatch();
     result.magisk = probe_magisk();
     result.susfs = probe_susfs();
+    result.selinux = probe_selinux();
 
     int count = 0;
     if (result.ksu.present) count++;
@@ -345,7 +343,28 @@ DetectResult Detector::run_all() {
 }
 
 // ===========================================================================
-// JSON serialization
+// SELinux probe (sh -> getenforce)
+// ===========================================================================
+
+SelinuxResult Detector::probe_selinux() {
+    // `getenforce` (toybox on Android) prints "Enforcing" or "Permissive".
+    // Run it through the shell; missing command / unreadable -> "unknown".
+    SelinuxResult out;
+    out.state = "unknown";
+    FILE* pipe = ::popen("getenforce 2>/dev/null", "r");
+    if (pipe == nullptr) return out;
+    char buf[64] = {};
+    const bool got = std::fgets(buf, sizeof(buf), pipe) != nullptr;
+    ::pclose(pipe);
+    if (!got) return out;
+    const std::string line(buf);
+    if (line.find("Enforcing") != std::string::npos)       out.state = "Enforcing";
+    else if (line.find("Permissive") != std::string::npos) out.state = "Permissive";
+    return out;
+}
+
+// ===========================================================================
+// Plain-text result printing (CLI debug entry)
 // ===========================================================================
 
 namespace {
@@ -362,35 +381,22 @@ const char* kernel_type_name(KernelType t) {
     return "unknown";
 }
 
+const char* present(bool v) { return v ? "present" : "not present"; }
+
 } // anonymous namespace
 
-std::string result_to_json_string(const DetectResult& r) {
-    json j;
-    j["detected"] = kernel_type_name(r.type);
-
-    {
-        json k;
-        k["present"] = r.ksu.present;
-        if (r.ksu.present) k["mode"] = r.ksu.mode_str;
-        j["kernelsu"] = std::move(k);
+void print_detector_result(const DetectResult& r) {
+    std::cout << "detector:\n"
+              << "  detected : " << kernel_type_name(r.type) << "\n"
+              << "  SELinux  : " << r.selinux.state << "\n"
+              << "  kernelsu : " << present(r.ksu.present);
+    if (r.ksu.present) {
+        std::cout << " (mode: " << r.ksu.mode_str << ")";
     }
-    {
-        json a;
-        a["present"] = r.ap.present;
-        j["apatch"] = std::move(a);
-    }
-    {
-        json m;
-        m["present"] = r.magisk.present;
-        j["magisk"] = std::move(m);
-    }
-    {
-        json s;
-        s["present"] = r.susfs.detected;
-        j["susfs"] = std::move(s);
-    }
-
-    return j.dump(2);
+    std::cout << "\n"
+              << "  apatch   : " << present(r.ap.present) << "\n"
+              << "  magisk   : " << present(r.magisk.present) << "\n"
+              << "  susfs    : " << present(r.susfs.detected) << "\n";
 }
 
 } // namespace ksu_detector

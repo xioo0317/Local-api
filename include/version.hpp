@@ -12,7 +12,7 @@
 namespace local_api {
 
 // Bump on each release
-inline constexpr const char* SERVER_VERSION = "1.2.1";
+inline constexpr const char* SERVER_VERSION = "1.3.0";
 
 // Debug master switch (hardcoded). CLI debug entry (`local_api debug ...`)
 // is alive only while this is true. Flip to false before a release build
@@ -31,8 +31,7 @@ inline constexpr int SERVER_PORT = 8080;
 inline constexpr int SERVER_PORT = LOCAL_API_PORT;
 #endif
 
-// Output paths for root detection result
-inline constexpr const char* OUTPUT_DIR  = "/data/local/tmp/coverRoot";
-inline constexpr const char* OUTPUT_FILE = "/data/local/tmp/coverRoot/root_detect.json";
+// Output directory (install target)
+inline constexpr const char* OUTPUT_DIR = "/data/local/tmp/coverRoot";
 
 } // namespace local_api

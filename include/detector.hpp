@@ -44,20 +44,26 @@ struct MagiskResult {
     bool present = false;
 };
 
+struct SelinuxResult {
+    std::string state = "unknown";  // "Enforcing" / "Permissive" / "unknown"
+};
+
 struct SusfsResult {
     bool detected = false;
 };
 
 struct DetectResult {
     KernelType type = KernelType::None;
+    SelinuxResult selinux;
     KsuResult ksu;
     ApResult  ap;
     MagiskResult magisk;
     SusfsResult susfs;
 };
 
-// Serialize a DetectResult to a pretty-printed JSON string.
-std::string result_to_json_string(const DetectResult& r);
+// Print a DetectResult as plain text ("key : value" per line) to stdout.
+// SELinux line reports the getenforce state (Enforcing / Permissive).
+void print_detector_result(const DetectResult& r);
 
 // --- Detector class ---
 
@@ -72,6 +78,7 @@ private:
     ApResult  probe_apatch();
     MagiskResult probe_magisk();
     SusfsResult probe_susfs();
+    SelinuxResult probe_selinux();
 
     // SIGSYS handler for catching unsupported syscalls
     bool sigsys_installed_ = false;

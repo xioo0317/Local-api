@@ -96,7 +96,7 @@ adb shell /data/Local-api install
 adb shell /data/Local-api router
 
 # 调试入口（发行版将 version.hpp 中 kDebugEnabled 改为 false 即整体关闭）
-adb shell /data/Local-api debug detector   # 单独跑 detector.cpp，输出纯文本检测结果
+adb shell /data/Local-api debug detector   # 单独跑 detector.cpp（含 getenforce SELinux 探测），纯文本输出
 ```
 
 > 图标隐藏、SusFS / 应用隐藏配置等功能需要以 root 身份启动本服务（例如在已获取 root 的 shell 中运行）。
