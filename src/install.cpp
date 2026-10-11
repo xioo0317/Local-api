@@ -144,14 +144,12 @@ int wait_for_watched_key(const std::vector<int>& fds, int timeout_ms) {
     return -2; // woke up for an unrelated event, caller re-polls
 }
 
-void print_menu(const std::vector<std::string>& options, const int sel) {
-    // "> - xxx" marks the current option; each row clears its line first so
-    // the whole menu can be redrawn in place (cursor moved up by the caller).
+void print_menu(const std::vector<std::string>& options) {
+    // Plain "  - " list, printed once. The KSU installer log window does not
+    // support ANSI sequences, so selection changes are echoed as plain text
+    // lines below the list instead of re-drawing the list.
     for (size_t i = 0; i < options.size(); ++i) {
-        // Plain-text frames only: some terminals do not support ANSI
-        // clear/scroll sequences, so each update prints fresh lines.
-        std::cout << (static_cast<int>(i) == sel ? "> " : "  ")
-                  << "- " << options[i] << "\n";
+        std::cout << "  - " << options[i] << "\n";
     }
 }
 
@@ -171,15 +169,13 @@ int volume_select(const std::vector<std::string>& options,
     std::vector<int> fds = open_input_devices(/*grab=*/true);
     if (fds.empty()) {
         std::cout << "未找到输入设备，使用默认项\n";
-        print_menu(options, sel);
+        print_menu(options);
         return sel;
     }
 
-    // Print the grab notice BEFORE the menu so that the menu occupies the
-    // last `count` rows: the in-place redraw moves the cursor up exactly
-    // `count` lines and lands on the first menu row.
     std::cout << "已拦截电源键：菜单关闭前系统不熄屏\n";
-    print_menu(options, sel);
+    print_menu(options);
+    std::cout << "当前选择：" << options[sel] << "\n";
 
     const auto deadline = std::chrono::steady_clock::now() +
                           std::chrono::seconds(timeout_sec);
@@ -198,10 +194,10 @@ int volume_select(const std::vector<std::string>& options,
         }
         if (key == static_cast<int>(kKeyVolumeUp)) {
             sel = (sel + count - 1) % count;
-            print_menu(options, sel);
+            std::cout << "当前选择：" << options[sel] << "\n";
         } else if (key == static_cast<int>(kKeyVolumeDown)) {
             sel = (sel + 1) % count;
-            print_menu(options, sel);
+            std::cout << "当前选择：" << options[sel] << "\n";
         } else if (key == static_cast<int>(kKeyPower)) {
             std::cout << "已确认：" << options[sel] << "\n";
             break;

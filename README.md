@@ -95,7 +95,7 @@ adb shell /data/Local-api install
 #   界面全中文、无 [install]/[menu] 前缀；启动直接弹出 Root 环境检测方式菜单
 #   （音量上键=自动检测(推荐)，音量下键=手动选择，10 秒无操作默认自动检测）；
 #   自动检测在后台跑真实 detector、只取最终 mode 值（完整检测输出走 debug detector）；
-#   手动选择从 KernelSU / APatch / Magisk / none（mode 值）中指定，列表用 "> -" 标记当前项；无 .installed 标志文件，重复运行完整执行；
+#   手动选择从 KernelSU / APatch / Magisk / none（mode 值）中指定，列表只打印一次，按键后在下方以纯文本"当前选择：xxx"逐行回显（KSU 安装器日志窗口不支持 ANSI，不做任何刷新/重绘）；无 .installed 标志文件，重复运行完整执行；
 #   菜单等待期间对含电源/音量键的输入设备执行 EVIOCGRAB 独占抓取，电源键被吞掉、
 #   不触发系统息屏（触摸屏等无关设备不受影响）；菜单结束主动释放 grab，
 #   进程退出或崩溃时内核随 fd 关闭自动解除，电源键立刻恢复息屏功能；
