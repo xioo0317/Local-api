@@ -268,8 +268,7 @@ bool volume_choice_binary(const std::string& up_label,
 }
 
 int run() {
-    std::cout << local_api::APP_NAME << " install v" << local_api::SERVER_VERSION << "\n"
-              << "one-time initialization\n";
+    std::cout << local_api::APP_NAME << " install v" << local_api::SERVER_VERSION << "\n";
 
     if (getuid() != 0) {
         std::cout << "[install] warning: not running as root, "
@@ -282,15 +281,6 @@ int run() {
     if (file_exists(marker)) {
         std::cout << "[install] already initialized (" << marker << ")\n"
                   << "[install] nothing to do\n";
-        return 0;
-    }
-
-    // Confirmation via the volume-key menu. Auto-selects "install now"
-    // on non-interactive sessions (CI / piped output) or missing devices.
-    const std::vector<std::string> options = {"install now", "cancel"};
-    const int choice = volume_select(options, /*default_index=*/0, /*timeout_sec=*/30);
-    if (choice != 0) {
-        std::cout << "[install] cancelled by user, nothing was changed\n";
         return 0;
     }
 
