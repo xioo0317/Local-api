@@ -60,7 +60,7 @@
 #define HAVE_STRCASECMP 1
 #define HAVE_STRDUP 1
 #define HAVE_STRERROR_R 1
-#if defined(__BIONIC__)
+#if defined(__ANDROID__)
 #define HAVE_POSIX_STRERROR_R 1
 #define CURL_OS "Android"
 #else
