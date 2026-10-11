@@ -1,17 +1,18 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
-// install.cpp — One-shot initialization (basically run once).
+// install.cpp — Installation flow (runs the full flow every time).
 //
 // Steps:
 //   1. warn when not running as root (real install steps will need it)
-//   2. short-circuit when the .installed marker already exists
-//   3. confirm via the volume-key menu (up/down = move, power = confirm;
+//   2. detection-method menu: volume up = auto detect (recommended,
+//      default), volume down = manual selection; live 10s countdown,
 //      auto-selects the default on non-interactive sessions, missing
-//      input devices, or after a 30s timeout)
+//      input devices, or when the countdown reaches zero
+//   3. manual path: volume-key menu to pick KernelSU / Apatch / Magisk /
+//      no Root (up/down = move, power = confirm, 30s timeout -> default)
 //   4. create the output directory (OUTPUT_DIR, mkdir -p style)
-//   5. write the marker file (version + timestamp)
 //
-// Idempotent by design: re-running is a no-op once installed.
+// No marker file: re-running always executes the full flow.
 // Self-contained: does NOT reuse anything from tools.cpp / router.cpp.
 
 #include "install.hpp"
@@ -32,6 +33,7 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <linux/input.h>
@@ -39,7 +41,6 @@
 namespace install {
 namespace {
 
-constexpr const char* kMarkerFile = "/.installed";
 
 // Linux key codes (linux/input-event-codes.h).
 constexpr __u16 kKeyVolumeDown = 114;
@@ -64,10 +65,6 @@ bool mkdirs(const std::string& path) {
     return true;
 }
 
-bool file_exists(const std::string& path) {
-    struct stat st {};
-    return stat(path.c_str(), &st) == 0;
-}
 
 // True when the device actually carries one of the keys the menu
 // consumes (power / volume up / volume down). Devices without them —
@@ -250,12 +247,19 @@ bool volume_choice_binary(const std::string& up_label,
     const auto deadline = std::chrono::steady_clock::now() +
                           std::chrono::seconds(timeout_sec);
     while (true) {
-        const auto left_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-                                 deadline - std::chrono::steady_clock::now()).count();
-        if (left_ms <= 0) { timed_out = true; break; }
-        const int key = wait_for_watched_key(fds, static_cast<int>(left_ms));
-        if (key == -2) continue; // unrelated input event, poll again
-        if (key < 0) { timed_out = true; break; }
+        const auto left = std::chrono::duration_cast<std::chrono::seconds>(
+                              deadline - std::chrono::steady_clock::now()).count();
+        if (left <= 0) {
+            std::cout << "\r\033[K" << std::flush;
+            timed_out = true;
+            break;
+        }
+        // Live countdown line, refreshed once per second (1s poll granularity).
+        std::cout << "\r\033[K  剩余 " << left << " 秒，无操作默认：" << up_plain
+                  << std::flush;
+        const int key = wait_for_watched_key(fds, 1000);
+        if (key < 0) continue; // -1 = 1s tick, -2 = unrelated input event
+        std::cout << "\r\033[K" << std::flush;
         if (key == static_cast<int>(kKeyVolumeUp)) { picked_up = true; break; }
         if (key == static_cast<int>(kKeyVolumeDown)) { picked_up = false; break; }
         // power key: swallowed by the grab on purpose, keep waiting
@@ -274,17 +278,8 @@ int run() {
         std::cout << "警告：未以 root 运行，安装可能不完整\n";
     }
 
-    const std::string marker = std::string(local_api::OUTPUT_DIR) + kMarkerFile;
-
-    // Idempotent: already installed -> nothing to do (no menu).
-    if (file_exists(marker)) {
-        std::cout << "已初始化 (" << marker << ")\n"
-                  << "无需重复安装\n";
-        return 0;
-    }
-
     // Root environment detection mode: volume up = auto detect (default,
-    // recommended), volume down = manual selection; 10s idle -> auto.
+    // recommended), volume down = manual selection; live 10s countdown.
     std::string root_mode;
     if (volume_choice_binary("自动检测 (推荐)", "手动选择", /*timeout_sec=*/10)) {
         std::cout << "正在自动检测 Root 环境...\n";
@@ -293,10 +288,19 @@ int run() {
         root_mode = result.mode; // 只取最终 mode 值，完整输出留给 debug detector
         std::cout << "检测结果：" << root_mode << "\n";
     } else {
-        const std::vector<std::string> root_types = {"KernelSU", "Apatch", "Magisk", "no root"};
-        const int pick = volume_select(root_types, /*default_index=*/0, /*timeout_sec=*/30);
-        root_mode = (pick >= 0 && pick < static_cast<int>(root_types.size()) && pick != 3)
-                        ? root_types[pick]
+        // Two blank lines between the detection-method menu and the manual
+        // selection submenu, for visual separation.
+        std::cout << "\n\n";
+        const std::vector<std::pair<std::string, std::string>> root_types = {
+            {"KernelSU", "KernelSU"},
+            {"Apatch", "Apatch"},
+            {"Magisk", "Magisk"},
+            {"无 Root", "none"}};
+        std::vector<std::string> labels;
+        for (const auto& t : root_types) labels.push_back(t.first);
+        const int pick = volume_select(labels, /*default_index=*/0, /*timeout_sec=*/30);
+        root_mode = (pick >= 0 && pick < static_cast<int>(root_types.size()))
+                        ? root_types[static_cast<size_t>(pick)].second
                         : "none";
         std::cout << "手动指定 Root 环境：" << root_mode << "\n";
     }
@@ -305,20 +309,6 @@ int run() {
     if (!mkdirs(local_api::OUTPUT_DIR)) {
         std::cout << "错误：创建目录失败 " << local_api::OUTPUT_DIR
                   << "（需要 root？）\n";
-        return 1;
-    }
-
-    std::ofstream out(marker);
-    if (out) {
-        const std::time_t now = std::time(nullptr);
-        out << "installed_by=" << local_api::APP_NAME << "\n"
-            << "version=" << local_api::SERVER_VERSION << "\n"
-            << "timestamp=" << now << "\n"
-            << "root_mode=" << root_mode << "\n";
-    }
-    out.close();
-    if (!file_exists(marker)) {
-        std::cout << "错误：写入标志文件失败 " << marker << "\n";
         return 1;
     }
 

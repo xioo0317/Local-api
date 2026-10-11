@@ -94,7 +94,7 @@ check "install banner (Chinese UI)" "$(echo "$out" | grep -q "安装程序" && e
 check "root detection menu shown (auto-default on non-tty)" "$(echo "$out" | grep -q "Root 环境检测方式" && echo 1 || echo 0)"
 check "volume-key menu (no prefix, Chinese)" "$(echo "$out" | grep -q "音量上键" && echo 1 || echo 0)"
 if [ "$rc" -eq 0 ]; then
-    check "install ok (完成 or 无需重复安装)" "$(echo "$out" | grep -qE "安装完成|无需重复安装" && echo 1 || echo 0)"
+    check "install ok (安装完成)" "$(echo "$out" | grep -q "安装完成" && echo 1 || echo 0)"
 else
     check "install fails cleanly on non-root host (rc=${rc})" "$(echo "$out" | grep -q "创建目录失败" && echo 1 || echo 0)"
 fi

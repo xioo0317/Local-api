@@ -4,7 +4,7 @@
 //
 // `local_api install` runs the one-time bootstrap: verify privileges,
 // confirm via the volume-key menu, create the output directory and drop
-// an .installed marker so later runs short-circuit.
+// (no marker file: every run executes the full flow).
 
 #pragma once
 

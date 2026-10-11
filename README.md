@@ -8,7 +8,7 @@ C++17 本地 HTTP 服务。仅开放一个接口 `POST /`，通过请求体 `act
 
 ```
 main.cpp      → 引用启动 + 参数分发
-                  install → install::run()（一次性初始化，含音量键确认菜单，基本只执行一次）
+                  install → install::run()（每次完整执行：检测方式菜单 + 目录创建，无标志文件）
                   debug <子命令> → debug::run()（调试入口，总开关 kDebugEnabled 控制，输出纯文本）
                   router / 无参数 / 其他 → router::run()（常驻网页服务）
 router.cpp    → 请求分发（网卡绑定、解析 action、分发对应工具函数）
@@ -93,9 +93,9 @@ adb shell chmod +x /data/Local-api
 # 初始化安装（基本只执行一次；幂等，重复执行自动跳过）
 adb shell /data/Local-api install
 #   界面全中文、无 [install]/[menu] 前缀；启动直接弹出 Root 环境检测方式菜单
-#   （音量上键=自动检测(推荐)，音量下键=手动选择，10 秒无操作默认自动检测）；
+#   （音量上键=自动检测(推荐)，音量下键=手动选择，10 秒实时倒计时默认自动检测）；
 #   自动检测在后台跑真实 detector、只取最终 mode 值（完整检测输出走 debug detector）；
-#   手动选择从 KernelSU / Apatch / Magisk / no root 中指定；结果 root_mode 记入 .installed 标志文件；
+#   手动选择从 KernelSU / Apatch / Magisk / 无 Root 中指定；无 .installed 标志文件，重复运行完整执行；
 #   菜单等待期间对含电源/音量键的输入设备执行 EVIOCGRAB 独占抓取，电源键被吞掉、
 #   不触发系统息屏（触摸屏等无关设备不受影响）；菜单结束主动释放 grab，
 #   进程退出或崩溃时内核随 fd 关闭自动解除，电源键立刻恢复息屏功能；
