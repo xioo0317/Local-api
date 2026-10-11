@@ -14,7 +14,7 @@ main.cpp      → 引用启动 + 参数分发
 router.cpp    → 请求分发（网卡绑定、解析 action、分发对应工具函数）
 tools.cpp     → 工具函数集合（detect / version / debug，全部占位、不传参）
 detector.cpp  → 纯检测库工具，暂不调用（KSU / APatch / Magisk / SusFS 握手）
-downloader.cpp→ libcurl 下载封装（dlopen 运行时加载，构建零依赖，为安装下载预留）
+downloader.cpp→ 下载封装（内嵌 curl 静态编译，目标环境零依赖，HTTP-only，为安装下载预留）
 version.hpp   → 版本号 + 配置常量（整合到 main 引用）
 ```
 

@@ -1,12 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
-// downloader.hpp — libcurl download helper for the install flow.
+// downloader.hpp — download helper for the install flow.
 //
-// libcurl is loaded at runtime (dlopen) instead of being linked: the
-// NDK does not ship libcurl, while real devices (OnePlus / Qualcomm
-// ROMs included) expose /system/lib64/libcurl.so. Host builds fall
-// back to libcurl.so.4. Neither Makefile nor Android.mk needs a
-// link-time dependency, so the CI stays green.
+// curl is vendored under third_party/curl (HTTP-only, TLS disabled) and
+// statically linked into the binary: downloads work out of the box on
+// any environment, with no runtime libcurl required on the device.
 
 #pragma once
 
@@ -14,7 +12,7 @@
 
 namespace downloader {
 
-// True when a usable libcurl could be loaded in this process.
+// curl is compiled in; downloading is always available.
 bool available();
 
 // Downloads `url` into `dest` (follows redirects, fails on HTTP >= 400,
