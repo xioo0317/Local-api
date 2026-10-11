@@ -326,7 +326,7 @@ SusfsResult Detector::probe_susfs() {
 //   1. KernelSU in LKM mode            -> KernelSU_LKM
 //   2. KernelSU with SusFS present     -> KernelSU_SUSFS
 //   3. KernelSU with SELinux Permissive-> KernelSU_PE
-//   4. APatch detected                 -> Apatch
+//   4. APatch detected                 -> APatch
 //   5. Magisk detected                 -> Magisk
 //   KernelSU without any of the above  -> KernelSU (fallback)
 //   nothing detected                   -> none
@@ -337,7 +337,7 @@ std::string resolve_root_mode(const DetectResult& r) {
         if (r.selinux.state == "Permissive") return "KernelSU_PE";
         return "KernelSU";
     }
-    if (r.ap.present) return "Apatch";
+    if (r.ap.present) return "APatch";
     if (r.magisk.present) return "Magisk";
     return "none";
 }
@@ -415,7 +415,7 @@ void print_detector_result(const DetectResult& r) {
         std::cout << " (mode: " << r.ksu.mode_str << ")";
     }
     std::cout << "\n"
-              << "Apatch   : " << present(r.ap.present) << "\n"
+              << "APatch  : " << present(r.ap.present) << "\n"
               << "Magisk   : " << present(r.magisk.present) << "\n"
               << "susfs    : " << present(r.susfs.detected) << "\n"
               << "mode     : " << r.mode << "\n";

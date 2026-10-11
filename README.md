@@ -95,7 +95,7 @@ adb shell /data/Local-api install
 #   界面全中文、无 [install]/[menu] 前缀；启动直接弹出 Root 环境检测方式菜单
 #   （音量上键=自动检测(推荐)，音量下键=手动选择，10 秒实时倒计时默认自动检测）；
 #   自动检测在后台跑真实 detector、只取最终 mode 值（完整检测输出走 debug detector）；
-#   手动选择从 KernelSU / Apatch / Magisk / 无 Root 中指定；无 .installed 标志文件，重复运行完整执行；
+#   手动选择从 KernelSU / APatch / Magisk / none（mode 值）中指定，列表用 "> -" 标记当前项；无 .installed 标志文件，重复运行完整执行；
 #   菜单等待期间对含电源/音量键的输入设备执行 EVIOCGRAB 独占抓取，电源键被吞掉、
 #   不触发系统息屏（触摸屏等无关设备不受影响）；菜单结束主动释放 grab，
 #   进程退出或崩溃时内核随 fd 关闭自动解除，电源键立刻恢复息屏功能；
@@ -108,7 +108,7 @@ adb shell /data/Local-api router
 adb shell /data/Local-api debug detector   # 单独跑 detector.cpp（含 getenforce SELinux 探测），纯文本输出
 #   输出末行 mode 为最终 root 类型判定：KernelSU_LKM（KSU+LKM 模式）/
 #   KernelSU_SUSFS（KSU+SusFS） / KernelSU_PE（KSU+SELinux Permissive） /
-#   Apatch / Magisk；KSU 但三项均不满足时兜底 KernelSU，未检出为 none
+#   APatch / Magisk；KSU 但三项均不满足时兜底 KernelSU，未检出为 none
 ```
 
 > 图标隐藏、SusFS / 应用隐藏配置等功能需要以 root 身份启动本服务（例如在已获取 root 的 shell 中运行）。

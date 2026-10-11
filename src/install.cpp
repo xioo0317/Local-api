@@ -145,9 +145,11 @@ int wait_for_watched_key(const std::vector<int>& fds, int timeout_ms) {
 }
 
 void print_menu(const std::vector<std::string>& options, const int sel) {
+    // "> - xxx" marks the current option; each row clears its line first so
+    // the whole menu can be redrawn in place (cursor moved up by the caller).
     for (size_t i = 0; i < options.size(); ++i) {
-        std::cout << (static_cast<int>(i) == sel ? "  > " : "    ")
-              << (i + 1) << ". " << options[i] << "\n";
+        std::cout << "\r\033[K" << (static_cast<int>(i) == sel ? "> " : "  ")
+                  << "- " << options[i] << "\n";
     }
 }
 
@@ -164,8 +166,6 @@ int volume_select(const std::vector<std::string>& options,
 
     std::cout << "音量上/下键：移动选项，电源键：确认\n";
     print_menu(options, sel);
-    std::cout << "当前选择：" << (sel + 1) << ". " << options[sel] << "\n"
-              << std::flush;
 
     // Non-interactive stdout (pipes, CI): never wait on keys.
     if (::isatty(STDOUT_FILENO) == 0) {
@@ -200,11 +200,11 @@ int volume_select(const std::vector<std::string>& options,
         } else if (key == static_cast<int>(kKeyVolumeDown)) {
             sel = (sel + 1) % count;
         }
-        // Redraw the current selection line in place.
-        std::cout << "\r\033[K当前选择：" << (sel + 1) << ". " << options[sel]
-                  << std::flush;
+        // Redraw the whole menu in place: cursor up to the first row.
+        std::cout << "\r\033[" << count << "A" << std::flush;
+        print_menu(options, sel);
         if (key == static_cast<int>(kKeyPower)) {
-            std::cout << "\n已确认：" << (sel + 1) << ". " << options[sel] << "\n";
+            std::cout << "已确认：" << options[sel] << "\n";
             break;
         }
     }
@@ -292,16 +292,11 @@ int run() {
         // Two blank lines between the detection-method menu and the manual
         // selection submenu, for visual separation.
         std::cout << "\n\n";
-        const std::vector<std::pair<std::string, std::string>> root_types = {
-            {"KernelSU", "KernelSU"},
-            {"Apatch", "Apatch"},
-            {"Magisk", "Magisk"},
-            {"无 Root", "none"}};
-        std::vector<std::string> labels;
-        for (const auto& t : root_types) labels.push_back(t.first);
-        const int pick = volume_select(labels, /*default_index=*/0, /*timeout_sec=*/30);
-        root_mode = (pick >= 0 && pick < static_cast<int>(root_types.size()))
-                        ? root_types[static_cast<size_t>(pick)].second
+        // The options are the mode values themselves.
+        const std::vector<std::string> root_modes = {"KernelSU", "APatch", "Magisk", "none"};
+        const int pick = volume_select(root_modes, /*default_index=*/0, /*timeout_sec=*/30);
+        root_mode = (pick >= 0 && pick < static_cast<int>(root_modes.size()))
+                        ? root_modes[static_cast<size_t>(pick)]
                         : "none";
         std::cout << "手动指定 Root 环境：" << root_mode << "\n";
     }
