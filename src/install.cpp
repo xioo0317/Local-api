@@ -148,7 +148,9 @@ void print_menu(const std::vector<std::string>& options, const int sel) {
     // "> - xxx" marks the current option; each row clears its line first so
     // the whole menu can be redrawn in place (cursor moved up by the caller).
     for (size_t i = 0; i < options.size(); ++i) {
-        std::cout << "\r\033[K" << (static_cast<int>(i) == sel ? "> " : "  ")
+        // Plain-text frames only: some terminals do not support ANSI
+        // clear/scroll sequences, so each update prints fresh lines.
+        std::cout << (static_cast<int>(i) == sel ? "> " : "  ")
                   << "- " << options[i] << "\n";
     }
 }
@@ -196,13 +198,11 @@ int volume_select(const std::vector<std::string>& options,
         }
         if (key == static_cast<int>(kKeyVolumeUp)) {
             sel = (sel + count - 1) % count;
+            print_menu(options, sel);
         } else if (key == static_cast<int>(kKeyVolumeDown)) {
             sel = (sel + 1) % count;
-        }
-        // Redraw the whole menu in place: cursor up to the first row.
-        std::cout << "\r\033[" << count << "A" << std::flush;
-        print_menu(options, sel);
-        if (key == static_cast<int>(kKeyPower)) {
+            print_menu(options, sel);
+        } else if (key == static_cast<int>(kKeyPower)) {
             std::cout << "已确认：" << options[sel] << "\n";
             break;
         }
@@ -244,16 +244,13 @@ bool volume_choice_binary(const std::string& up_label,
         const auto left = std::chrono::duration_cast<std::chrono::seconds>(
                               deadline - std::chrono::steady_clock::now()).count();
         if (left <= 0) {
-            std::cout << "\r\033[K" << std::flush;
             timed_out = true;
             break;
         }
-        // Live countdown line, refreshed once per second (1s poll granularity).
-        std::cout << "\r\033[K  剩余 " << left << " 秒，无操作默认：" << up_plain
-                  << std::flush;
+        // 1s poll granularity keeps the timeout responsive; no live
+        // countdown text (plain output only, the header already states it).
         const int key = wait_for_watched_key(fds, 1000);
         if (key < 0) continue; // -1 = 1s tick, -2 = unrelated input event
-        std::cout << "\r\033[K" << std::flush;
         if (key == static_cast<int>(kKeyVolumeUp)) { picked_up = true; break; }
         if (key == static_cast<int>(kKeyVolumeDown)) { picked_up = false; break; }
         // power key: swallowed by the grab on purpose, keep waiting
