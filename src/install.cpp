@@ -107,8 +107,8 @@ std::vector<int> open_input_devices(const bool grab) {
         if (grab && ::ioctl(fd, EVIOCGRAB, reinterpret_cast<void*>(1)) != 0) {
             // Device busy (already grabbed elsewhere): keep listening,
             // but the system will also see the keys.
-            std::cout << "[menu] note: could not grab " << name
-                      << ", system may still react to its keys\n";
+            std::cout << "警告：无法独占 " << name
+                      << "，系统可能仍响应其按键\n";
         }
         fds.push_back(fd);
     }
@@ -149,8 +149,8 @@ int wait_for_watched_key(const std::vector<int>& fds, int timeout_ms) {
 
 void print_menu(const std::vector<std::string>& options, const int sel) {
     for (size_t i = 0; i < options.size(); ++i) {
-        std::cout << "[menu] " << (static_cast<int>(i) == sel ? " > " : "   ")
-                  << (i + 1) << ". " << options[i] << "\n";
+        std::cout << (static_cast<int>(i) == sel ? "  > " : "    ")
+              << (i + 1) << ". " << options[i] << "\n";
     }
 }
 
@@ -165,22 +165,22 @@ int volume_select(const std::vector<std::string>& options,
                   : 0;
     const int count = static_cast<int>(options.size());
 
-    std::cout << "[menu] volume up/down = move, power = confirm\n";
+    std::cout << "音量上/下键：移动选项，电源键：确认\n";
     print_menu(options, sel);
-    std::cout << "[menu] selected: " << (sel + 1) << ". " << options[sel] << std::flush;
+    std::cout << "当前选择：" << (sel + 1) << ". " << options[sel] << std::flush;
 
     // Non-interactive stdout (pipes, CI): never wait on keys.
     if (::isatty(STDOUT_FILENO) == 0) {
-        std::cout << "\n[menu] non-interactive session, keeping default\n";
+        std::cout << "\n非交互环境，使用默认项\n";
         return sel;
     }
 
     std::vector<int> fds = open_input_devices(/*grab=*/true);
     if (fds.empty()) {
-        std::cout << "\n[menu] no input device found, keeping default\n";
+        std::cout << "\n未找到输入设备，使用默认项\n";
         return sel;
     }
-    std::cout << "[menu] power key captured: screen-off suppressed until the menu closes\n";
+    std::cout << "已拦截电源键：菜单关闭前系统不熄屏\n";
 
     const auto deadline = std::chrono::steady_clock::now() +
                           std::chrono::seconds(timeout_sec);
@@ -188,7 +188,7 @@ int volume_select(const std::vector<std::string>& options,
         const auto left_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                                  deadline - std::chrono::steady_clock::now()).count();
         if (left_ms <= 0) {
-            std::cout << "\n[menu] timed out, keeping default\n";
+            std::cout << "\n超时，使用默认项\n";
             break;
         }
         const int key = wait_for_watched_key(fds, static_cast<int>(left_ms));
@@ -203,10 +203,10 @@ int volume_select(const std::vector<std::string>& options,
             sel = (sel + 1) % count;
         }
         // Redraw the current selection line in place.
-        std::cout << "\r\033[K[menu] selected: " << (sel + 1) << ". " << options[sel]
+        std::cout << "\r\033[K当前选择：" << (sel + 1) << ". " << options[sel]
                   << std::flush;
         if (key == static_cast<int>(kKeyPower)) {
-            std::cout << "\n[menu] confirmed: " << (sel + 1) << ". " << options[sel] << "\n";
+            std::cout << "\n已确认：" << (sel + 1) << ". " << options[sel] << "\n";
             break;
         }
     }
@@ -224,15 +224,15 @@ bool volume_choice_binary(const std::string& up_label,
         up_plain.compare(up_plain.size() - suffix.size(), suffix.size(), suffix) == 0) {
         up_plain.erase(up_plain.size() - suffix.size());
     }
-    std::cout << "[menu] 请选择 Root 环境检测方式：\n"
-              << "[menu] 请使用音量键选择：\n"
-              << "[menu]   音量上键：" << up_label << "\n"
-              << "[menu]   音量下键：" << down_label << "\n"
-              << "[menu]   " << timeout_sec << "秒无操作：默认" << up_plain << "\n";
+    std::cout << "请选择 Root 环境检测方式：\n"
+              << "请使用音量键选择：\n"
+              << "  音量上键：" << up_label << "\n"
+              << "  音量下键：" << down_label << "\n"
+              << "  " << timeout_sec << "秒无操作：默认" << up_plain << "\n";
 
     // Non-interactive stdout (pipes, CI): never wait on keys.
     if (::isatty(STDOUT_FILENO) == 0) {
-        std::cout << "[menu] 非交互环境，默认：" << up_plain << "\n";
+        std::cout << "非交互环境，默认：" << up_plain << "\n";
         return true;
     }
 
@@ -241,7 +241,7 @@ bool volume_choice_binary(const std::string& up_label,
     // automatically by the kernel on exit / crash.
     std::vector<int> fds = open_input_devices(/*grab=*/true);
     if (fds.empty()) {
-        std::cout << "[menu] 无输入设备，默认：" << up_plain << "\n";
+        std::cout << "未找到输入设备，默认：" << up_plain << "\n";
         return true;
     }
 
@@ -262,25 +262,24 @@ bool volume_choice_binary(const std::string& up_label,
     }
     close_input_devices(fds);
 
-    if (timed_out) std::cout << "[menu] 超时，默认：" << up_plain << "\n";
-    else std::cout << "[menu] 已选择：" << (picked_up ? up_plain : down_label) << "\n";
+    if (timed_out) std::cout << "超时，默认：" << up_plain << "\n";
+    else std::cout << "已选择：" << (picked_up ? up_plain : down_label) << "\n";
     return picked_up;
 }
 
 int run() {
-    std::cout << local_api::APP_NAME << " install v" << local_api::SERVER_VERSION << "\n";
+    std::cout << local_api::APP_NAME << " 安装程序 v" << local_api::SERVER_VERSION << "\n";
 
     if (getuid() != 0) {
-        std::cout << "[install] warning: not running as root, "
-                     "installation may be incomplete\n";
+        std::cout << "警告：未以 root 运行，安装可能不完整\n";
     }
 
     const std::string marker = std::string(local_api::OUTPUT_DIR) + kMarkerFile;
 
     // Idempotent: already installed -> nothing to do (no menu).
     if (file_exists(marker)) {
-        std::cout << "[install] already initialized (" << marker << ")\n"
-                  << "[install] nothing to do\n";
+        std::cout << "已初始化 (" << marker << ")\n"
+                  << "无需重复安装\n";
         return 0;
     }
 
@@ -288,24 +287,24 @@ int run() {
     // recommended), volume down = manual selection; 10s idle -> auto.
     std::string root_mode;
     if (volume_choice_binary("自动检测 (推荐)", "手动选择", /*timeout_sec=*/10)) {
-        std::cout << "[install] 自动检测 Root 环境...\n";
+        std::cout << "正在自动检测 Root 环境...\n";
         ksu_detector::Detector detector;
         const ksu_detector::DetectResult result = detector.run_all();
-        ksu_detector::print_detector_result(result);
-        root_mode = result.mode;
+        root_mode = result.mode; // 只取最终 mode 值，完整输出留给 debug detector
+        std::cout << "检测结果：" << root_mode << "\n";
     } else {
         const std::vector<std::string> root_types = {"KernelSU", "Apatch", "Magisk", "no root"};
         const int pick = volume_select(root_types, /*default_index=*/0, /*timeout_sec=*/30);
         root_mode = (pick >= 0 && pick < static_cast<int>(root_types.size()) && pick != 3)
                         ? root_types[pick]
                         : "none";
-        std::cout << "[install] 手动指定 Root 环境: " << root_mode << "\n";
+        std::cout << "手动指定 Root 环境：" << root_mode << "\n";
     }
 
-    std::cout << "[install] creating output directory: " << local_api::OUTPUT_DIR << "\n";
+    std::cout << "创建输出目录：" << local_api::OUTPUT_DIR << "\n";
     if (!mkdirs(local_api::OUTPUT_DIR)) {
-        std::cout << "[install] error: failed to create " << local_api::OUTPUT_DIR
-                  << " (root required?)\n";
+        std::cout << "错误：创建目录失败 " << local_api::OUTPUT_DIR
+                  << "（需要 root？）\n";
         return 1;
     }
 
@@ -319,11 +318,11 @@ int run() {
     }
     out.close();
     if (!file_exists(marker)) {
-        std::cout << "[install] error: failed to write marker " << marker << "\n";
+        std::cout << "错误：写入标志文件失败 " << marker << "\n";
         return 1;
     }
 
-    std::cout << "[install] complete: " << local_api::OUTPUT_DIR << " ready\n";
+    std::cout << "安装完成：" << local_api::OUTPUT_DIR << " 已就绪\n";
 
     // TODO(后续开发): 真正的安装步骤（部署资源 / 配置 / 权限设置）在此追加。
     return 0;

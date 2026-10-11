@@ -14,6 +14,7 @@ main.cpp      → 引用启动 + 参数分发
 router.cpp    → 请求分发（网卡绑定、解析 action、分发对应工具函数）
 tools.cpp     → 工具函数集合（detect / version / debug，全部占位、不传参）
 detector.cpp  → 纯检测库工具，暂不调用（KSU / APatch / Magisk / SusFS 握手）
+downloader.cpp→ libcurl 下载封装（dlopen 运行时加载，构建零依赖，为安装下载预留）
 version.hpp   → 版本号 + 配置常量（整合到 main 引用）
 ```
 
@@ -91,9 +92,10 @@ adb shell chmod +x /data/Local-api
 
 # 初始化安装（基本只执行一次；幂等，重复执行自动跳过）
 adb shell /data/Local-api install
-#   启动后直接弹出 Root 环境检测方式菜单（音量上键=自动检测(推荐)，音量下键=手动选择，
-#   10 秒无操作默认自动检测）；自动检测跑真实 detector 并输出结果；手动选择从
-#   KernelSU / Apatch / Magisk / no root 中指定；结果 root_mode 记入 .installed 标志文件；
+#   界面全中文、无 [install]/[menu] 前缀；启动直接弹出 Root 环境检测方式菜单
+#   （音量上键=自动检测(推荐)，音量下键=手动选择，10 秒无操作默认自动检测）；
+#   自动检测在后台跑真实 detector、只取最终 mode 值（完整检测输出走 debug detector）；
+#   手动选择从 KernelSU / Apatch / Magisk / no root 中指定；结果 root_mode 记入 .installed 标志文件；
 #   菜单等待期间对含电源/音量键的输入设备执行 EVIOCGRAB 独占抓取，电源键被吞掉、
 #   不触发系统息屏（触摸屏等无关设备不受影响）；菜单结束主动释放 grab，
 #   进程退出或崩溃时内核随 fd 关闭自动解除，电源键立刻恢复息屏功能；

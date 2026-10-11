@@ -12,13 +12,15 @@ LOCAL_MODULE := local_api
 #   detector.cpp — KernelSU / APatch / Magisk / SusFS handshake detection
 #   install.cpp  — one-shot initialization (run once)
 #   debug.cpp    — CLI debug entry (master-switch gated), standalone diagnostics
+#   downloader.cpp — libcurl download helper (dlopen, no link-time dep)
 LOCAL_SRC_FILES := \
     ../src/main.cpp \
     ../src/router.cpp \
     ../src/tools.cpp \
     ../src/detector.cpp \
     ../src/install.cpp \
-    ../src/debug.cpp
+    ../src/debug.cpp \
+    ../src/downloader.cpp
 
 LOCAL_C_INCLUDES := \
     $(LOCAL_PATH)/../include \
