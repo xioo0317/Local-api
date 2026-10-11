@@ -21,9 +21,18 @@
 #include "router.hpp"
 #include "version.hpp"
 
+#include <cstdio>
 #include <string>
 
 int main(int argc, char* argv[]) {
+    // Under the KSU installer our stdout is a pipe (libsu reads it line by
+    // line), and non-tty stdio defaults to FULL buffering: text stays in the
+    // user-space buffer until it fills or the process exits, so the installer
+    // log shows nothing while menus run. Disable buffering so every line is
+    // written out immediately.
+    setvbuf(stdout, nullptr, _IONBF, 0);
+    setvbuf(stderr, nullptr, _IONBF, 0);
+
     const std::string cmd = argc > 1 ? argv[1] : "";
 
     if (cmd == "install") {
