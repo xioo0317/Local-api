@@ -164,17 +164,18 @@ int volume_select(const std::vector<std::string>& options,
 
     std::cout << "音量上/下键：移动选项，电源键：确认\n";
     print_menu(options, sel);
-    std::cout << "当前选择：" << (sel + 1) << ". " << options[sel] << std::flush;
+    std::cout << "当前选择：" << (sel + 1) << ". " << options[sel] << "\n"
+              << std::flush;
 
     // Non-interactive stdout (pipes, CI): never wait on keys.
     if (::isatty(STDOUT_FILENO) == 0) {
-        std::cout << "\n非交互环境，使用默认项\n";
+        std::cout << "非交互环境，使用默认项\n";
         return sel;
     }
 
     std::vector<int> fds = open_input_devices(/*grab=*/true);
     if (fds.empty()) {
-        std::cout << "\n未找到输入设备，使用默认项\n";
+        std::cout << "未找到输入设备，使用默认项\n";
         return sel;
     }
     std::cout << "已拦截电源键：菜单关闭前系统不熄屏\n";
@@ -185,13 +186,13 @@ int volume_select(const std::vector<std::string>& options,
         const auto left_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                                  deadline - std::chrono::steady_clock::now()).count();
         if (left_ms <= 0) {
-            std::cout << "\n超时，使用默认项\n";
+            std::cout << "超时，使用默认项\n";
             break;
         }
         const int key = wait_for_watched_key(fds, static_cast<int>(left_ms));
         if (key == -2) continue;        // unrelated input event, poll again
         if (key < 0) {                  // timeout
-            std::cout << "\n[menu] timed out, keeping default\n";
+            std::cout << "超时，使用默认项\n";
             break;
         }
         if (key == static_cast<int>(kKeyVolumeUp)) {
