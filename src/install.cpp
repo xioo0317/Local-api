@@ -166,13 +166,6 @@ int volume_select(const std::vector<std::string>& options,
 
     std::cout << "音量上/下键：移动选项，电源键：确认\n";
 
-    // Non-interactive stdout (pipes, CI): never wait on keys.
-    if (::isatty(STDOUT_FILENO) == 0) {
-        std::cout << "非交互环境，使用默认项\n";
-        print_menu(options, sel);
-        return sel;
-    }
-
     std::vector<int> fds = open_input_devices(/*grab=*/true);
     if (fds.empty()) {
         std::cout << "未找到输入设备，使用默认项\n";
@@ -233,12 +226,6 @@ bool volume_choice_binary(const std::string& up_label,
               << "  音量上键：" << up_label << "\n"
               << "  音量下键：" << down_label << "\n"
               << "  " << timeout_sec << "秒无操作：默认" << up_plain << "\n";
-
-    // Non-interactive stdout (pipes, CI): never wait on keys.
-    if (::isatty(STDOUT_FILENO) == 0) {
-        std::cout << "非交互环境，默认：" << up_plain << "\n";
-        return true;
-    }
 
     // Grab devices while waiting: the power key is swallowed, so the
     // screen stays on during the choice; released on the way out and
