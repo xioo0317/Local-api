@@ -165,20 +165,26 @@ int volume_select(const std::vector<std::string>& options,
     const int count = static_cast<int>(options.size());
 
     std::cout << "音量上/下键：移动选项，电源键：确认\n";
-    print_menu(options, sel);
 
     // Non-interactive stdout (pipes, CI): never wait on keys.
     if (::isatty(STDOUT_FILENO) == 0) {
         std::cout << "非交互环境，使用默认项\n";
+        print_menu(options, sel);
         return sel;
     }
 
     std::vector<int> fds = open_input_devices(/*grab=*/true);
     if (fds.empty()) {
         std::cout << "未找到输入设备，使用默认项\n";
+        print_menu(options, sel);
         return sel;
     }
+
+    // Print the grab notice BEFORE the menu so that the menu occupies the
+    // last `count` rows: the in-place redraw moves the cursor up exactly
+    // `count` lines and lands on the first menu row.
     std::cout << "已拦截电源键：菜单关闭前系统不熄屏\n";
+    print_menu(options, sel);
 
     const auto deadline = std::chrono::steady_clock::now() +
                           std::chrono::seconds(timeout_sec);
