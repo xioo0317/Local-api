@@ -107,8 +107,9 @@ adb shell /data/Local-api router
 
 # 调试入口（发行版将 version.hpp 中 kDebugEnabled 改为 false 即整体关闭）
 adb shell /data/Local-api debug detector   # 单独跑 detector.cpp（含 getenforce SELinux 探测），纯文本输出
-#   输出末行 mode 为最终 root 类型判定：KernelSU_LKM（KSU+LKM 模式）/
-#   KernelSU_SUSFS（KSU+SusFS） / KernelSU_PE（KSU+SELinux Permissive） /
+#   输出末行 mode 为最终 root 类型判定（优先级从高到低）：KernelSU_PE
+#   （KSU+SELinux Permissive，可 Magica 提权，优先于形态判定）/ KernelSU_LKM
+#   （KSU+LKM 模式）/ KernelSU_SUSFS（KSU+SusFS）/
 #   APatch / Magisk；KSU 但三项均不满足时兜底 KernelSU，未检出为 none
 ```
 
