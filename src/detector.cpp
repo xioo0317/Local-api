@@ -323,20 +323,18 @@ SusfsResult Detector::probe_susfs() {
 // ===========================================================================
 
 // Final root-mode resolution (priority order, checked top-down):
-//   1. KernelSU with SELinux Permissive-> KernelSU_PE  (Magica / permissive
-//      exploit takes precedence: this is the actionable privilege state)
-//   2. KernelSU in LKM mode            -> KernelSU_LKM
-//   3. KernelSU with SusFS present     -> KernelSU_SUSFS
+//   1. KernelSU with SELinux Permissive-> KernelSU_PE   (Magica-eligible first)
+//   2. KernelSU with SusFS present     -> KernelSU_SUSFS
+//   3. otherwise                       -> KernelSU_LKM  (KSU runs as an LKM;
+//      the bundled lkm build is the only supported form, so it is the fallback)
 //   4. APatch detected                 -> APatch
 //   5. Magisk detected                 -> Magisk
-//   KernelSU without any of the above  -> KernelSU (fallback)
 //   nothing detected                   -> none
 std::string resolve_root_mode(const DetectResult& r) {
     if (r.ksu.present) {
         if (r.selinux.state == "Permissive") return "KernelSU_PE";
-        if (r.ksu.mode_str.find("lkm") != std::string::npos) return "KernelSU_LKM";
         if (r.susfs.detected) return "KernelSU_SUSFS";
-        return "KernelSU";
+        return "KernelSU_LKM";
     }
     if (r.ap.present) return "APatch";
     if (r.magisk.present) return "Magisk";
