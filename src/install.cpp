@@ -279,7 +279,7 @@ int run() {
         // selection submenu, for visual separation.
         std::cout << "\n\n";
         // The options are the mode values themselves.
-        const std::vector<std::string> root_modes = {"KernelSU", "APatch", "Magisk", "none"};
+        const std::vector<std::string> root_modes = {"KernelSU_LKM", "KernelSU_SUSFS", "KernelSU_PE", "APatch", "Magisk"};
         const int pick = volume_select(root_modes, /*default_index=*/0, /*timeout_sec=*/30);
         root_mode = (pick >= 0 && pick < static_cast<int>(root_modes.size()))
                         ? root_modes[static_cast<size_t>(pick)]
