@@ -2,9 +2,10 @@
 //
 // downloader.hpp — download helper for the install flow.
 //
-// curl is vendored under third_party/curl (HTTP-only, TLS disabled) and
-// statically linked into the binary: downloads work out of the box on
-// any environment, with no runtime libcurl required on the device.
+// curl is linked as a prebuilt static archive under third_party/prebuilt/
+// (built by the xioo0317/curl fork CI, HTTP-only, TLS disabled): downloads
+// work out of the box on any environment, with no runtime libcurl required
+// on the device.
 
 #pragma once
 

@@ -14,7 +14,7 @@ main.cpp      → 引用启动 + 参数分发
 router.cpp    → 请求分发（网卡绑定、解析 action、分发对应工具函数）
 tools.cpp     → 工具函数集合（detect / version / debug，全部占位、不传参）
 detector.cpp  → 纯检测库工具，暂不调用（KSU / APatch / Magisk / SusFS 握手）
-downloader.cpp→ 下载封装（内嵌 curl 静态编译，目标环境零依赖，HTTP-only，为安装下载预留）
+downloader.cpp→ 下载封装（链接预编译 libcurl.a 静态库，目标环境零依赖，HTTP-only，为安装下载预留）
 version.hpp   → 版本号 + 配置常量（整合到 main 引用）
 ```
 
@@ -27,10 +27,13 @@ version.hpp   → 版本号 + 配置常量（整合到 main 引用）
 ./
 ├── Makefile                     # 主机 + NDK 构建脚本
 ├── src/
-│   ├── main.cpp                 # 仅 HTTP 网卡（服务绑定）
+│   ├── main.cpp                 # 入口 + 参数分发（install / debug / router）
 │   ├── router.cpp               # 请求分发（action → tool）
 │   ├── tools.cpp                # 工具函数集合
-│   └── detector.cpp             # 纯检测库
+│   ├── detector.cpp             # 纯检测库
+│   ├── install.cpp              # 安装初始化（一次性菜单流程）
+│   ├── debug.cpp                # 调试入口（kDebugEnabled 总开关）
+│   └── downloader.cpp           # 下载封装（预编译 libcurl）
 ├── include/
 │   ├── version.hpp              # 版本号 + 配置
 │   ├── router.hpp               # 路由分发接口
@@ -41,6 +44,10 @@ version.hpp   → 版本号 + 配置常量（整合到 main 引用）
 │   ├── magisk_uapi.hpp          # Magisk daemon 协议
 │   └── susfs_uapi.hpp           # SusFS 握手 ABI
 ├── third_party/
+│   ├── prebuilt/                # 预编译 libcurl.a + 匹配头文件（xioo0317/curl fork CI 产物）
+│   │   ├── include/curl/
+│   │   ├── linux-x86_64/libcurl.a
+│   │   └── android-arm64/libcurl.a
 │   ├── httplib.h                # cpp-httplib
 │   └── nlohmann/json.hpp        # nlohmann/json
 ├── jni/                         # NDK 构建配置
@@ -74,15 +81,19 @@ curl -X POST http://127.0.0.1:8080/ -H "Content-Type: application/json" -d '{"ac
 ## 构建
 
 ```bash
-# 主机编译
+# 主机编译（链接 third_party/prebuilt/linux-x86_64/libcurl.a）
 make
 
-# Android NDK
+# Android NDK（链接 third_party/prebuilt/android-arm64/libcurl.a）
 make ndk NDK_HOME=/path/to/ndk
 
 # 清理
 make clean
 ```
+
+> libcurl 不再随本仓库源码编译：静态库由 [xioo0317/curl](https://github.com/xioo0317/curl)（curl/curl fork）的
+> CI 构建并上传（HTTP-only、无 TLS、-fPIC，linux-x86_64 与 android-arm64 两份），
+> 本仓库直接链接预编译产物；升级 curl 时在 fork CI 重新构建并替换 third_party/prebuilt/ 即可。
 
 ## 运行
 
@@ -95,7 +106,7 @@ adb shell /data/Local-api install
 #   界面全中文、无 [install]/[menu] 前缀；启动直接弹出 Root 环境检测方式菜单
 #   （音量上键=自动检测(推荐)，音量下键=手动选择，10 秒无操作默认自动检测）；
 #   自动检测在后台跑真实 detector、只取最终 mode 值（完整检测输出走 debug detector）；
-#   手动选择从 KernelSU / APatch / Magisk / none（mode 值）中指定，列表只打印一次，按键后在下方以纯文本"当前选择：xxx"逐行回显（KSU 安装器日志窗口不支持 ANSI，不做任何刷新/重绘）；无 .installed 标志文件，重复运行完整执行；
+#   手动选择从 KernelSU_LKM / KernelSU_SUSFS / KernelSU_PE / APatch / Magisk（mode 值）中指定，列表只打印一次，按键后在下方以纯文本"当前选择：xxx"逐行回显（KSU 安装器日志窗口不支持 ANSI，不做任何刷新/重绘）；无 .installed 标志文件，重复运行完整执行；
 #   菜单等待期间对含电源/音量键的输入设备执行 EVIOCGRAB 独占抓取，电源键被吞掉、
 #   不触发系统息屏（触摸屏等无关设备不受影响）；菜单结束主动释放 grab，
 #   进程退出或崩溃时内核随 fd 关闭自动解除，电源键立刻恢复息屏功能；
@@ -110,7 +121,7 @@ adb shell /data/Local-api debug detector   # 单独跑 detector.cpp（含 getenf
 #   输出末行 mode 为最终 root 类型判定（优先级从高到低）：KernelSU_PE
 #   （KSU+SELinux Permissive，可 Magica 提权）/ KernelSU_SUSFS（KSU+SusFS）/
 #   KernelSU_LKM（兜底，KSU 以 LKM 形态运行）/
-#   APatch / Magisk；KSU 但三项均不满足时兜底 KernelSU，未检出为 none
+#   APatch / Magisk；均未检出为 none
 ```
 
 > 图标隐藏、SusFS / 应用隐藏配置等功能需要以 root 身份启动本服务（例如在已获取 root 的 shell 中运行）。
@@ -119,7 +130,7 @@ adb shell /data/Local-api debug detector   # 单独跑 detector.cpp（含 getenf
 
 | 常量 | 当前值 | 说明 |
 |------|--------|------|
-| `SERVER_VERSION` | `1.1.0` | 发版递增 |
+| `SERVER_VERSION` | `1.14.0` | 发版递增 |
 | `API_VERSION` | `2.0` | 接口格式变更递增 |
 
 前端调用 `{"action":"version"}` 检查是否需要更新。

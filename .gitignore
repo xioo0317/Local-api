@@ -5,6 +5,9 @@ cmake-build-* /
 *.so
 *.dylib
 *.a
+# vendored prebuilt libcurl archives (xioo0317/curl fork CI products)
+!third_party/prebuilt/linux-x86_64/libcurl.a
+!third_party/prebuilt/android-arm64/libcurl.a
 local_api
 *.exe
 

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // downloader.cpp — download helper backed by the vendored, statically
-// linked curl (third_party/curl). See downloader.hpp for the contract.
+// linked curl (prebuilt libcurl.a). See downloader.hpp for the contract.
 
 #include "downloader.hpp"
 
