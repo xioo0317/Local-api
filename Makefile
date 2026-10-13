@@ -5,7 +5,7 @@
 # Clean:         make clean
 #
 # libcurl is linked as a prebuilt static archive produced by the
-# xioo0317/curl fork CI (HTTP-only, TLS disabled, built with -fPIC).
+# xioo0317/curl fork CI (HTTP/HTTPS via Mbed TLS, built with -fPIC).
 # Archives and matching headers live under third_party/prebuilt/.
 # No curl sources are compiled in this repo anymore.
 
@@ -62,19 +62,20 @@ CXXFLAGS := -std=c++17 -Wall -Wextra -O2 -frtti -fexceptions -DCURL_STATICLIB $(
 HOST_LDFLAGS := -pthread
 LDFLAGS  := -llog -pthread
 
-# Prebuilt libcurl archives (per-target, from xioo0317/curl fork CI)
-CURL_LIB_HOST := third_party/prebuilt/linux-x86_64/libcurl.a
-CURL_LIB_NDK  := third_party/prebuilt/android-arm64/libcurl.a
+# Prebuilt libcurl + Mbed TLS archives (per-target, from xioo0317/curl fork CI)
+# Static link order matters: curl first, then its Mbed TLS dependencies.
+CURL_LIBS_HOST := third_party/prebuilt/linux-x86_64/libcurl.a third_party/prebuilt/linux-x86_64/libmbedtls.a third_party/prebuilt/linux-x86_64/libmbedx509.a third_party/prebuilt/linux-x86_64/libmbedcrypto.a
+CURL_LIBS_NDK  := third_party/prebuilt/android-arm64/libcurl.a third_party/prebuilt/android-arm64/libmbedtls.a third_party/prebuilt/android-arm64/libmbedx509.a third_party/prebuilt/android-arm64/libmbedcrypto.a
 
 .PHONY: all ndk all-abis clean check-ndk
 
 all:
 	@mkdir -p $(BUILD)
-	$(CXX) $(CXXFLAGS) -o $(BUILD)/$(TARGET_NAME) $(SRCS) $(CURL_LIB_HOST) $(HOST_LDFLAGS)
+	$(CXX) $(CXXFLAGS) -o $(BUILD)/$(TARGET_NAME) $(SRCS) $(CURL_LIBS_HOST) $(HOST_LDFLAGS)
 
 ndk: check-ndk
 	@mkdir -p $(BUILD)
-	$(NDK_CXX) $(CXXFLAGS) -fPIE -pie -o $(BUILD)/$(TARGET_NAME)_$(ABI) $(SRCS) $(CURL_LIB_NDK) $(LDFLAGS)
+	$(NDK_CXX) $(CXXFLAGS) -fPIE -pie -o $(BUILD)/$(TARGET_NAME)_$(ABI) $(SRCS) $(CURL_LIBS_NDK) $(LDFLAGS)
 
 all-abis:
 	@for abi in $(ABIS); do \

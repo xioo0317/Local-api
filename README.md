@@ -14,7 +14,7 @@ main.cpp      → 引用启动 + 参数分发
 router.cpp    → 请求分发（网卡绑定、解析 action、分发对应工具函数）
 tools.cpp     → 工具函数集合（detect / version / debug，全部占位、不传参）
 detector.cpp  → 纯检测库工具，暂不调用（KSU / APatch / Magisk / SusFS 握手）
-downloader.cpp→ 下载封装（链接预编译 libcurl.a 静态库，目标环境零依赖，HTTP-only，为安装下载预留）
+downloader.cpp→ 下载封装（链接预编译 libcurl.a + Mbed TLS 静态库，目标环境零依赖，支持 HTTP/HTTPS，为安装下载预留）
 version.hpp   → 版本号 + 配置常量（整合到 main 引用）
 ```
 
@@ -44,7 +44,7 @@ version.hpp   → 版本号 + 配置常量（整合到 main 引用）
 │   ├── magisk_uapi.hpp          # Magisk daemon 协议
 │   └── susfs_uapi.hpp           # SusFS 握手 ABI
 ├── third_party/
-│   ├── prebuilt/                # 预编译 libcurl.a + 匹配头文件（xioo0317/curl fork CI 产物）
+│   ├── prebuilt/                # 预编译 libcurl.a + Mbed TLS 三件套 + 匹配头文件（xioo0317/curl fork CI 产物）
 │   │   ├── include/curl/
 │   │   ├── linux-x86_64/libcurl.a
 │   │   └── android-arm64/libcurl.a
@@ -118,6 +118,7 @@ adb shell /data/Local-api router
 
 # 调试入口（发行版将 version.hpp 中 kDebugEnabled 改为 false 即整体关闭）
 adb shell /data/Local-api debug detector   # 单独跑 detector.cpp（含 getenforce SELinux 探测），纯文本输出
+adb shell /data/Local-api debug downloader [url]  # 真下载测试（默认 https://m.baidu.com/，免 root，存 /tmp）
 #   输出末行 mode 为最终 root 类型判定（优先级从高到低）：KernelSU_PE
 #   （KSU+SELinux Permissive，可 Magica 提权）/ KernelSU_SUSFS（KSU+SusFS）/
 #   KernelSU_LKM（兜底，KSU 以 LKM 形态运行）/
@@ -130,7 +131,7 @@ adb shell /data/Local-api debug detector   # 单独跑 detector.cpp（含 getenf
 
 | 常量 | 当前值 | 说明 |
 |------|--------|------|
-| `SERVER_VERSION` | `1.14.0` | 发版递增 |
+| `SERVER_VERSION` | `1.14.1` | 发版递增 |
 | `API_VERSION` | `2.0` | 接口格式变更递增 |
 
 前端调用 `{"action":"version"}` 检查是否需要更新。
