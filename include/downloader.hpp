@@ -23,4 +23,9 @@ bool download_to_file(const std::string& url,
                       const std::string& dest,
                       std::string& err);
 
+// CLI debug helper (used by `local_api debug downloader [url]`): downloads
+// `url` (default https://m.baidu.com/) into /tmp and prints result/saved/size
+// as plain text. No root required. Returns 0 on success, 1 on failure.
+int debug_run(const std::string& url);
+
 } // namespace downloader

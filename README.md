@@ -9,7 +9,7 @@ C++17 本地 HTTP 服务。仅开放一个接口 `POST /`，通过请求体 `act
 ```
 main.cpp      → 引用启动 + 参数分发
                   install → install::run()（每次完整执行：检测方式菜单 + 目录创建，无标志文件）
-                  debug <子命令> → debug::run()（调试入口，总开关 kDebugEnabled 控制，输出纯文本）
+                  debug <子命令> → debug::run()（调试入口，总开关 kDebugEnabled 控制，输出纯文本；detector/downloader 薄转发 + 单工具直调）
                   router / 无参数 / 其他 → router::run()（常驻网页服务）
 router.cpp    → 请求分发（网卡绑定、解析 action、分发对应工具函数）
 tools.cpp     → 工具函数集合（detect / version / debug，全部占位、不传参）
@@ -119,6 +119,7 @@ adb shell /data/Local-api router
 # 调试入口（发行版将 version.hpp 中 kDebugEnabled 改为 false 即整体关闭）
 adb shell /data/Local-api debug detector   # 单独跑 detector.cpp（含 getenforce SELinux 探测），纯文本输出
 adb shell /data/Local-api debug downloader [url]  # 真下载测试（默认 https://m.baidu.com/，免 root，存 /tmp）
+adb shell /data/Local-api debug tool_version       # 单工具直调（tool_ 前缀或注册名均可：tool_version / version）
 #   输出末行 mode 为最终 root 类型判定（优先级从高到低）：KernelSU_PE
 #   （KSU+SELinux Permissive，可 Magica 提权）/ KernelSU_SUSFS（KSU+SusFS）/
 #   KernelSU_LKM（兜底，KSU 以 LKM 形态运行）/

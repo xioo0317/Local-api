@@ -8,6 +8,7 @@
 #include <curl/curl.h>
 
 #include <cstdio>
+#include <iostream>
 #include <cstddef>
 #include <string>
 
@@ -78,6 +79,40 @@ bool download_to_file(const std::string& url,
         return false;
     }
     return true;
+}
+
+// ===========================================================================
+// CLI debug helper — real-download probe (no root), used by
+// `local_api debug downloader [url]`. Owned here so debug.cpp stays a thin
+// forward, same as the detector entry.
+// ===========================================================================
+
+int debug_run(const std::string& url_in) {
+    const std::string kDefaultUrl = "https://m.baidu.com/";
+    const std::string kOutPath = "/tmp/local_api_debug_download.out";
+    const std::string url = url_in.empty() ? kDefaultUrl : url_in;
+    std::cout << "url: " << url << "\n";
+    if (!kGlobalInit) {
+        std::cout << "result: FAIL\nreason: curl 初始化失败\n";
+        return 1;
+    }
+    std::remove(kOutPath.c_str());
+    std::string err;
+    if (!download_to_file(url, kOutPath, err)) {
+        std::cout << "result: FAIL\nreason: " << err << "\n";
+        return 1;
+    }
+    std::FILE* f = std::fopen(kOutPath.c_str(), "rb");
+    if (!f) {
+        std::cout << "result: FAIL\nreason: 下载成功但无法读取目标文件\n";
+        return 1;
+    }
+    std::fseek(f, 0, SEEK_END);
+    const long size = std::ftell(f);
+    std::fclose(f);
+    std::cout << "result: OK\nsaved: " << kOutPath << "\nsize: " << size
+              << " bytes\n";
+    return 0;
 }
 
 }  // namespace downloader

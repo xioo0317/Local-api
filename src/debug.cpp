@@ -2,54 +2,31 @@
 //
 // debug.cpp — CLI debug entry, standalone diagnostics.
 //
-// `local_api debug detector` runs detector.cpp by itself (printing lives in
-// detector.cpp). `local_api debug downloader [url]` exercises the vendored
-// curl download path (no root required): it fetches `url` (default
-// https://m.baidu.com/) into /tmp and reports the saved size, so the
-// prebuilt libcurl.a link and the TLS handshake can be verified from a
-// plain shell.
+// Subcommands (thin forwards — implementation lives in the owning module):
+//   debug detector          run detector.cpp standalone (printing in detector.cpp)
+//   debug downloader [url]  real-download probe via downloader.cpp (no root)
+//   debug <tool>            run a registered tool directly and print its JSON,
+//                           e.g. `debug tool_version` (handler style) or
+//                           `debug version` (registered action name)
 // The whole entry is dead the moment kDebugEnabled is flipped to false.
 
 #include "debug.hpp"
 #include "detector.hpp"
 #include "downloader.hpp"
+#include "tools.hpp"
 #include "version.hpp" // APP_NAME / SERVER_VERSION / kDebugEnabled
 
-#include <cstdio>
 #include <iostream>
 #include <string>
 
 namespace debug {
 namespace {
 
-// Default probe target: a real HTTPS site with redirects.
-constexpr const char* kDefaultUrl = "https://m.baidu.com/";
-constexpr const char* kOutPath = "/tmp/local_api_debug_download.out";
-
-int run_downloader(const std::string& url_in) {
-    const std::string url = url_in.empty() ? kDefaultUrl : url_in;
-    std::cout << "url: " << url << "\n";
-    if (!downloader::available()) {
-        std::cout << "result: FAIL\nreason: curl 初始化失败\n";
-        return 1;
-    }
-    std::remove(kOutPath);
-    std::string err;
-    if (!downloader::download_to_file(url, kOutPath, err)) {
-        std::cout << "result: FAIL\nreason: " << err << "\n";
-        return 1;
-    }
-    std::FILE* f = std::fopen(kOutPath, "rb");
-    if (!f) {
-        std::cout << "result: FAIL\nreason: 下载成功但无法读取目标文件\n";
-        return 1;
-    }
-    std::fseek(f, 0, SEEK_END);
-    const long size = std::ftell(f);
-    std::fclose(f);
-    std::cout << "result: OK\nsaved: " << kOutPath << "\nsize: " << size
-              << " bytes\n";
-    return 0;
+// Accept both the registered action name ("version") and the handler-style
+// name ("tool_version") so CLI usage matches the code either way.
+std::string normalize_tool_name(const std::string& sub) {
+    if (sub.rfind("tool_", 0) == 0) return sub.substr(5);
+    return sub;
 }
 
 }  // namespace
@@ -73,8 +50,17 @@ int run(const std::string& sub, const std::string& arg) {
     }
 
     if (sub == "downloader") {
-        // Real-download probe of the vendored libcurl.a (no root needed).
-        return run_downloader(arg);
+        // Real-download probe; implementation lives in downloader.cpp.
+        return downloader::debug_run(arg);
+    }
+
+    // Single-tool debug: run a registered tool by name, print its JSON.
+    const std::string name = normalize_tool_name(sub);
+    for (const auto& action : tools::list_actions()) {
+        if (action.get<std::string>() == name) {
+            std::cout << tools::execute(name) << "\n";
+            return 0;
+        }
     }
 
     if (!sub.empty()) {
@@ -83,8 +69,9 @@ int run(const std::string& sub, const std::string& arg) {
     std::cout << "usage: local_api debug <subcommand> [arg]\n"
               << "subcommands:\n"
               << "  detector          run detector.cpp standalone, print plain text\n"
-              << "  downloader [url]  download url (default " << kDefaultUrl
-              << ") into /tmp, no root needed\n";
+              << "  downloader [url]  download url (default https://m.baidu.com/) into /tmp, no root needed\n"
+              << "  <tool>            run a registered tool directly: detect / version / debug\n"
+              << "                    (handler style also accepted: tool_detect / tool_version / tool_debug)\n";
     return sub.empty() ? 0 : 1;
 }
 
