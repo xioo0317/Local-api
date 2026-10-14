@@ -134,7 +134,7 @@ adb shell /data/Local-api debug tool_version       # 单工具直调（tool_ 前
 
 | 常量 | 当前值 | 说明 |
 |------|--------|------|
-| `SERVER_VERSION` | `1.15.0` | 发版递增 |
+| `SERVER_VERSION` | `1.15.1` | 发版递增 |
 | `API_VERSION` | `2.0` | 接口格式变更递增 |
 
 前端调用 `{"action":"version"}` 检查是否需要更新。
