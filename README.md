@@ -81,14 +81,16 @@ curl -X POST http://127.0.0.1:8080/ -H "Content-Type: application/json" -d '{"ac
 ## 构建
 
 ```bash
-# 主机编译（链接 third_party/prebuilt/linux-x86_64/libcurl.a）
-make
+# 主机编译（链接 third_party/prebuilt/linux-x86_64/*.a）
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j$(nproc)
 
-# Android NDK（链接 third_party/prebuilt/android-arm64/libcurl.a）
-make ndk NDK_HOME=/path/to/ndk
-
-# 清理
-make clean
+# Android NDK（链接 third_party/prebuilt/android-arm64/*.a）
+cmake -B build-android \
+  -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake \
+  -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-24 \
+  -DCMAKE_BUILD_TYPE=Release
+cmake --build build-android -j$(nproc)
 ```
 
 > libcurl 不再随本仓库源码编译：静态库由 [xioo0317/curl](https://github.com/xioo0317/curl)（curl/curl fork）的
@@ -132,7 +134,7 @@ adb shell /data/Local-api debug tool_version       # 单工具直调（tool_ 前
 
 | 常量 | 当前值 | 说明 |
 |------|--------|------|
-| `SERVER_VERSION` | `1.14.1` | 发版递增 |
+| `SERVER_VERSION` | `1.15.0` | 发版递增 |
 | `API_VERSION` | `2.0` | 接口格式变更递增 |
 
 前端调用 `{"action":"version"}` 检查是否需要更新。
